@@ -38,12 +38,21 @@ class Store {
       this.channels = savedChannels;
       // Auto-migrate: add channelId from known mapping
       let migrated = false;
+      // Build logo lookup from defaults
+      const defaultLogos = Object.fromEntries(
+        DEFAULT_CHANNELS.filter((c) => c.logo).map((c) => [c.channelId, c.logo])
+      );
       this.channels.forEach((ch) => {
         if (!ch.channelId && ch.handle && KNOWN_CHANNEL_IDS[ch.handle]) {
           ch.channelId = KNOWN_CHANNEL_IDS[ch.handle];
           migrated = true;
         }
         if (!ch.id) { ch.id = uid(); migrated = true; }
+        // Migrate logos from defaults (update if changed)
+        if (ch.channelId && defaultLogos[ch.channelId] && ch.logo !== defaultLogos[ch.channelId]) {
+          ch.logo = defaultLogos[ch.channelId];
+          migrated = true;
+        }
       });
       if (migrated) save(STORAGE_KEYS.channels, this.channels);
     } else {

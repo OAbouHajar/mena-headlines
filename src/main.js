@@ -122,8 +122,8 @@ function renderChannelList() {
     .map(
       (ch) => `
     <div class="channel-card ${store.isActive(ch.id) ? 'active' : ''}" data-id="${ch.id}">
-      <div class="channel-avatar" style="background:${ch.color}">
-        ${initials(ch.name)}
+      <div class="channel-avatar" style="background:${ch.logo ? 'transparent' : ch.color}">
+        ${ch.logo ? `<img src="${ch.logo}" alt="${esc(ch.name)}" class="channel-logo">` : initials(ch.name)}
       </div>
       <div class="channel-info">
         <div class="channel-name">${esc(ch.name)}</div>
