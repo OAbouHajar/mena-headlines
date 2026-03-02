@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Multi-Channel Live Viewer</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23e63946'/><polygon points='12,8 24,16 12,24' fill='white'/></svg>">
+    <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="btn-icon" id="toggleSidebarBtn" title="Toggle Sidebar (S)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+            </button>
+            <div class="header-logo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="8,5 19,12 8,19"/></svg>
+            </div>
+            <h1 data-i18n="appTitle">Multi-Channel Live Viewer</h1>
+        </div>
+        <div class="header-controls">
+            <div class="layout-group" id="layoutGroup"></div>
+            <button class="btn btn-secondary" id="addChannelBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                <span data-i18n="addChannel">Add Channel</span>
+            </button>
+            <button class="btn-icon" id="theatreBtn" title="Theatre Mode (T)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+            </button>
+            <button class="btn-icon" id="refreshBtn" title="Refresh All (R)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="langToggleBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+                <span data-i18n="langLabel">عربي</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3 data-i18n="channels">Channels</h3>
+                <div class="sidebar-header-right">
+                    <span id="channelCount">0</span>
+                    <button class="btn-icon-sm" id="resetBtn" title="Reset to defaults">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="add-channel-form">
+                <input type="text" id="quickAddInput" data-i18n-placeholder="quickAddPlaceholder" placeholder="@handle, UC... ID, or channel URL">
+                <button class="btn btn-primary btn-sm" id="quickAddBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+            </div>
+            <div class="sidebar-content" id="channelList"></div>
+        </aside>
+
+        <!-- Video Area -->
+        <main class="video-area">
+            <div class="video-grid" id="videoGrid"></div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Channel Modal -->
+    <div class="modal-overlay" id="channelModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle" data-i18n="addNewChannel">Add New Channel</h2>
+                <button class="btn-icon-sm" id="modalCloseBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field">
+                    <label for="modalName" data-i18n="channelName">Channel Name</label>
+                    <input type="text" id="modalName" data-i18n-placeholder="channelNamePlaceholder" placeholder="e.g. Al Jazeera">
+                </div>
+                <div class="form-field">
+                    <label for="modalHandle" data-i18n="youtubeHandle">YouTube Handle</label>
+                    <input type="text" id="modalHandle" data-i18n-placeholder="handlePlaceholder" placeholder="@aljazeera">
+                    <span class="form-hint" data-i18n="handleHint">Used for linking to the channel page</span>
+                </div>
+                <div class="form-field">
+                    <label for="modalChannelId"><span data-i18n="channelIdLabel">Channel ID</span> <span class="required" data-i18n="channelIdRequired">(required for embed)</span></label>
+                    <input type="text" id="modalChannelId" data-i18n-placeholder="channelIdPlaceholder" placeholder="UCfiwzLy-8yKzIbsmZTzxDgw">
+                    <span class="form-hint" data-i18n="channelIdHint">Starts with UC — find it in page source under "externalId" or "browse_id"</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="modalCancelBtn" data-i18n="cancel">Cancel</button>
+                <button class="btn btn-primary" id="modalSaveBtn" data-i18n="saveChannel">Save Channel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
