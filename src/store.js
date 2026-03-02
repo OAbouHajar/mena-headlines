@@ -132,6 +132,14 @@ class Store {
     return ch;
   }
 
+  reorderChannel(startIndex, endIndex) {
+    if (startIndex === endIndex) return;
+    const [movedChannel] = this.channels.splice(startIndex, 1);
+    this.channels.splice(endIndex, 0, movedChannel);
+    this._save();
+    this._emit();
+  }
+
   /** Replace state entirely (used by cloud sync). */
   loadState(channels, active) {
     this.channels = channels.map((ch) => ({ ...ch, id: ch.id || uid() }));

@@ -146,13 +146,15 @@ function renderActiveCount() {
 }
 
 // ============ Render: Channel List ============
+let dragStartIndex = null;
+
 function renderChannelList() {
   channelCount.textContent = store.channels.length;
 
   channelList.innerHTML = store.channels
     .map(
-      (ch) => `
-    <div class="channel-card ${store.isActive(ch.id) ? 'active' : ''}" data-id="${ch.id}">
+      (ch, index) => `
+    <div class="channel-card ${store.isActive(ch.id) ? 'active' : ''}" data-id="${ch.id}" data-index="${index}" draggable="true">
       <div class="channel-avatar" style="background:${ch.logo ? 'transparent' : ch.color}">
         ${ch.logo ? `<img src="${ch.logo}" alt="${esc(ch.name)}" class="channel-logo">` : initials(ch.name)}
       </div>
@@ -172,6 +174,43 @@ function renderChannelList() {
     </div>`
     )
     .join('');
+
+  // Drag and drop event listeners
+  const cards = channelList.querySelectorAll('.channel-card');
+  cards.forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      dragStartIndex = parseInt(card.dataset.index);
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragStartIndex);
+      card.classList.add('dragging');
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault(); // Necessary to allow drop
+      e.dataTransfer.dropEffect = 'move';
+      card.classList.add('drag-over');
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const dragEndIndex = parseInt(card.dataset.index);
+      
+      if (dragStartIndex !== null && dragStartIndex !== dragEndIndex) {
+        store.reorderChannel(dragStartIndex, dragEndIndex);
+      }
+    });
+
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      cards.forEach(c => c.classList.remove('drag-over'));
+      dragStartIndex = null;
+    });
+  });
 }
 
 function esc(str) {
