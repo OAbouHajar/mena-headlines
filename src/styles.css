@@ -568,3 +568,117 @@ body.theatre .sidebar { display: none; }
 [dir="rtl"] .channel-actions {
     /* keep actions on the logical end */
 }
+
+/* ============ Auth Area ============ */
+.auth-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+#authBtn {
+    position: relative;
+}
+
+.auth-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--accent);
+    flex-shrink: 0;
+}
+
+.auth-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 200px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    z-index: 500;
+    padding: 8px 0;
+    animation: modalIn 0.15s ease;
+}
+.auth-dropdown.visible {
+    display: block;
+}
+
+.auth-dropdown-user {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.auth-dropdown-user img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.auth-dropdown-user-info {
+    flex: 1;
+    min-width: 0;
+}
+.auth-dropdown-user-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.auth-dropdown-user-email {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.auth-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.auth-dropdown-item:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+.auth-dropdown-item.danger {
+    color: var(--danger);
+}
+.auth-dropdown-item.danger:hover {
+    background: rgba(255, 68, 68, 0.1);
+}
+
+.auth-sync-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(46, 196, 182, 0.15);
+    color: var(--success);
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 10px;
+    margin-inline-start: auto;
+}
+
+/* RTL auth dropdown */
+[dir="rtl"] .auth-dropdown {
+    right: auto;
+    left: 0;
+}

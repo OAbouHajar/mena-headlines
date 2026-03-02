@@ -122,6 +122,18 @@ class Store {
     return ch;
   }
 
+  /** Replace state entirely (used by cloud sync). */
+  loadState(channels, active) {
+    this.channels = channels.map((ch) => ({ ...ch, id: ch.id || uid() }));
+    const validIds = new Set(this.channels.map((c) => c.id));
+    this.active = (active || []).filter((id) => validIds.has(id));
+    if (this.active.length === 0) {
+      this.active = this.channels.map((c) => c.id);
+    }
+    this._save();
+    this._emit();
+  }
+
   resetToDefaults() {
     this.channels = DEFAULT_CHANNELS.map((ch) => ({ ...ch, id: uid() }));
     this.active = this.channels.map((c) => c.id);

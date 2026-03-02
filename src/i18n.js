@@ -46,6 +46,14 @@ const translations = {
     resetConfirm: 'Reset all channels to defaults? Custom channels will be removed.',
     // Layout
     liveCount: (n) => `${n} Live`,
+    // Auth
+    signIn: 'Sign In',
+    signOut: 'Sign Out',
+    signInWithGoogle: 'Sign in with Google',
+    welcomeBack: (name) => `Welcome, ${name}`,
+    signedOut: 'Signed out',
+    cloudSync: 'Synced to cloud',
+    firebaseNotConfigured: 'Firebase not configured — see .env file',
     // Lang toggle
     langLabel: 'عربي',
   },
@@ -87,6 +95,13 @@ const translations = {
     resetConfirm: 'إعادة تعيين جميع القنوات للافتراضي؟ ستتم إزالة القنوات المخصصة.',
     streamLabel: (n) => `${n} بث`,
     liveCount: (n) => `${n} بث مباشر`,
+    signIn: 'تسجيل الدخول',
+    signOut: 'تسجيل الخروج',
+    signInWithGoogle: 'تسجيل الدخول بحساب جوجل',
+    welcomeBack: (name) => `مرحباً، ${name}`,
+    signedOut: 'تم تسجيل الخروج',
+    cloudSync: 'تمت المزامنة مع السحابة',
+    firebaseNotConfigured: 'لم يتم إعداد Firebase — راجع ملف .env',
     langLabel: 'EN',
   },
 };

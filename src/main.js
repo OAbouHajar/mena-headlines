@@ -1,5 +1,7 @@
 import { store } from './store.js';
 import { t, toggleLang, onLangChange } from './i18n.js';
+import { signInWithGoogle, signOutUser } from './firebase.js';
+import { onAuthReady } from './sync.js';
 
 // ============ DOM References ============
 const $ = (sel) => document.querySelector(sel);
@@ -12,6 +14,13 @@ const videoGrid = $('#videoGrid');
 const layoutGroup = $('#layoutGroup');
 const quickAddInput = $('#quickAddInput');
 const toastContainer = $('#toastContainer');
+
+// Auth
+const authArea = $('#authArea');
+const authBtn = $('#authBtn');
+const authLabel = $('#authLabel');
+const authDropdown = $('#authDropdown');
+let _authUser = null;
 
 // Modal
 const modalOverlay = $('#channelModal');
@@ -382,10 +391,91 @@ window.addEventListener('message', (e) => {
   }
 });
 
+// ============ Auth UI ============
+function renderAuthUI(user) {
+  _authUser = user;
+  if (user) {
+    // Signed-in state: show avatar + name
+    const photo = user.photoURL
+      ? `<img class="auth-avatar" src="${user.photoURL}" alt="" referrerpolicy="no-referrer">`
+      : `<svg class="auth-avatar" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+    const firstName = (user.displayName || '').split(' ')[0] || user.email || 'User';
+    authBtn.innerHTML = `${photo}<span>${esc(firstName)}</span>`;
+    authDropdown.innerHTML = `
+      <div class="auth-dropdown-user">
+        ${photo.replace('24', '32').replace('24', '32')}
+        <div class="auth-dropdown-user-info">
+          <div class="auth-dropdown-user-name">${esc(user.displayName || 'User')}</div>
+          <div class="auth-dropdown-user-email">${esc(user.email || '')}</div>
+        </div>
+      </div>
+      <button class="auth-dropdown-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/><path d="M2 12h20"/></svg>
+        ${t('cloudSync')} <span class="auth-sync-badge">ON</span>
+      </button>
+      <button class="auth-dropdown-item danger" id="signOutBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        ${t('signOut')}
+      </button>`;
+  } else {
+    // Signed-out state
+    authBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>${t('signIn')}</span>`;
+    authDropdown.innerHTML = '';
+    authDropdown.classList.remove('visible');
+  }
+}
+
+function toggleAuthDropdown() {
+  authDropdown.classList.toggle('visible');
+}
+
+// Close auth dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  if (!authArea.contains(e.target)) {
+    authDropdown.classList.remove('visible');
+  }
+});
+
+// Auth button click
+authBtn.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (_authUser) {
+    toggleAuthDropdown();
+  } else {
+    try {
+      const user = await signInWithGoogle();
+      toast(t('welcomeBack', user.displayName || 'User'), 'success');
+    } catch (err) {
+      if (err.message === 'Firebase not configured') {
+        toast(t('firebaseNotConfigured'), 'warning');
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        toast(err.message, 'error');
+      }
+    }
+  }
+});
+
+// Sign out from dropdown
+authDropdown.addEventListener('click', async (e) => {
+  const signOutBtn = e.target.closest('#signOutBtn');
+  if (signOutBtn) {
+    await signOutUser();
+    authDropdown.classList.remove('visible');
+    toast(t('signedOut'), 'info');
+  }
+});
+
 // ============ Subscribe & Boot ============
 store.subscribe(render);
 onLangChange(() => {
   translateStatic();
+  renderAuthUI(_authUser);
+  render();
+});
+onAuthReady((user) => {
+  renderAuthUI(user);
   render();
 });
 $('#langToggleBtn').addEventListener('click', toggleLang);
