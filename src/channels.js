@@ -108,6 +108,13 @@ export const DEFAULT_CHANNELS = [
     color: '#ff8000',
     logo: '/logos/reuters.jpg',
   },
+  {
+    name: 'Al Mayadeen',
+    handle: '@almayadeentv',
+    channelId: 'UCZCFHCU-2eGF7V5ciMkoPHw',
+    color: '#b71c1c',
+    logo: '/logos/almayadeen.jpg',
+  },
 ];
 
 /** Known handle → channelId mapping for auto-migration */
