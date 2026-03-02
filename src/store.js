@@ -98,13 +98,14 @@ class Store {
     this._emit();
   }
 
-  addChannel({ name, handle, channelId }) {
+  addChannel({ name, handle, channelId, logo }) {
     const ch = {
       id: uid(),
       name,
       handle: handle || '',
       channelId: channelId || '',
       color: pickColor(this.channels.length),
+      logo: logo || '',
     };
     this.channels.push(ch);
     this._save();

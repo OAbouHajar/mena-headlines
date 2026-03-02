@@ -13,7 +13,7 @@ const translations = {
     // Sidebar
     channels: 'Channels',
     resetTitle: 'Reset to defaults',
-    quickAddPlaceholder: '@handle, UC… ID, or channel URL',
+    quickAddPlaceholder: 'Paste YouTube link, e.g. youtube.com/@CNN',
     // Modal
     addNewChannel: 'Add New Channel',
     editChannel: 'Edit Channel',
@@ -65,7 +65,7 @@ const translations = {
     toggleSidebar: 'تبديل الشريط الجانبي (S)',
     channels: 'القنوات',
     resetTitle: 'إعادة تعيين للافتراضي',
-    quickAddPlaceholder: '@معرف أو UC… أو رابط القناة',
+    quickAddPlaceholder: 'الصق رابط يوتيوب، مثال: youtube.com/@CNN',
     addNewChannel: 'إضافة قناة جديدة',
     editChannel: 'تعديل القناة',
     channelName: 'اسم القناة',

@@ -60,7 +60,7 @@
                 </div>
             </div>
             <div class="add-channel-form">
-                <input type="text" id="quickAddInput" data-i18n-placeholder="quickAddPlaceholder" placeholder="@handle, UC... ID, or channel URL">
+                <input type="text" id="quickAddInput" data-i18n-placeholder="quickAddPlaceholder" placeholder="Paste YouTube link, e.g. youtube.com/@CNN">
                 <button class="btn btn-primary btn-sm" id="quickAddBtn">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
                 </button>
@@ -85,18 +85,25 @@
             </div>
             <div class="modal-body">
                 <div class="form-field">
+                    <label for="modalUrl">YouTube URL</label>
+                    <div class="url-input-row">
+                        <input type="text" id="modalUrl" placeholder="https://www.youtube.com/@ChannelName">
+                        <button class="btn btn-primary btn-sm" id="modalResolveBtn" type="button">Resolve</button>
+                    </div>
+                    <span class="form-hint">Paste a channel link — name, handle, ID &amp; logo will be filled automatically</span>
+                </div>
+                <hr class="modal-divider">
+                <div class="form-field">
                     <label for="modalName" data-i18n="channelName">Channel Name</label>
                     <input type="text" id="modalName" data-i18n-placeholder="channelNamePlaceholder" placeholder="e.g. Al Jazeera">
                 </div>
                 <div class="form-field">
                     <label for="modalHandle" data-i18n="youtubeHandle">YouTube Handle</label>
                     <input type="text" id="modalHandle" data-i18n-placeholder="handlePlaceholder" placeholder="@aljazeera">
-                    <span class="form-hint" data-i18n="handleHint">Used for linking to the channel page</span>
                 </div>
                 <div class="form-field">
                     <label for="modalChannelId"><span data-i18n="channelIdLabel">Channel ID</span> <span class="required" data-i18n="channelIdRequired">(required for embed)</span></label>
                     <input type="text" id="modalChannelId" data-i18n-placeholder="channelIdPlaceholder" placeholder="UCfiwzLy-8yKzIbsmZTzxDgw">
-                    <span class="form-hint" data-i18n="channelIdHint">Starts with UC — find it in page source under "externalId" or "browse_id"</span>
                 </div>
             </div>
             <div class="modal-footer">

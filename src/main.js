@@ -25,6 +25,8 @@ let _authUser = null;
 // Modal
 const modalOverlay = $('#channelModal');
 const modalTitle = $('#modalTitle');
+const modalUrl = $('#modalUrl');
+const modalResolveBtn = $('#modalResolveBtn');
 const modalName = $('#modalName');
 const modalHandle = $('#modalHandle');
 const modalChannelId = $('#modalChannelId');
@@ -104,6 +106,35 @@ function parseInput(val) {
   const name = nameBase.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
 
   return { name, handle, channelId };
+}
+
+/**
+ * Resolve a YouTube @handle or channel URL to { name, handle, channelId, logo }.
+ * Uses /api/resolve-channel (Vite proxy in dev, Azure Function in prod).
+ */
+async function resolveYouTubeChannel(input) {
+  let handle = input.trim();
+
+  // Extract @handle from full URL
+  if (handle.includes('youtube.com/@')) {
+    handle = '@' + handle.split('@').pop().split('/')[0].split('?')[0];
+  } else if (handle.includes('youtube.com/channel/')) {
+    // For /channel/UC... URLs, pass the full URL
+    handle = handle.split('channel/').pop().split('/')[0].split('?')[0];
+  } else if (!handle.startsWith('@') && !handle.startsWith('UC')) {
+    handle = '@' + handle;
+  }
+
+  const res = await fetch(`/api/resolve-channel?handle=${encodeURIComponent(handle)}`);
+  if (!res.ok) throw new Error(`Failed to resolve channel (${res.status})`);
+  const data = await res.json();
+
+  return {
+    name: data.name || '',
+    handle: data.handle || handle,
+    channelId: data.channelId || '',
+    logo: data.logo || '',
+  };
 }
 
 // ============ Render: Active Count Badge ============
@@ -233,6 +264,7 @@ function render() {
 // ============ Modal ============
 function openModal(editId = null) {
   modalEditId = editId;
+  modalUrl.value = '';
   if (editId) {
     const ch = store.getChannel(editId);
     if (!ch) return;
@@ -247,7 +279,7 @@ function openModal(editId = null) {
     modalChannelId.value = '';
   }
   modalOverlay.classList.add('visible');
-  setTimeout(() => modalName.focus(), 100);
+  setTimeout(() => modalUrl.focus(), 100);
 }
 
 function closeModal() {
@@ -331,9 +363,40 @@ videoGrid.addEventListener('click', (e) => {
 $('#quickAddBtn').addEventListener('click', quickAdd);
 quickAddInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') quickAdd(); });
 
-function quickAdd() {
+async function quickAdd() {
   const val = quickAddInput.value.trim();
   if (!val) return;
+
+  // If it looks like a YouTube URL or @handle, resolve it
+  const isUrl = val.includes('youtube.com/') || val.includes('youtu.be/');
+  const isHandle = val.startsWith('@');
+
+  if (isUrl || isHandle) {
+    quickAddInput.disabled = true;
+    quickAddInput.value = 'Resolving channel…';
+    try {
+      const resolved = await resolveYouTubeChannel(val);
+      if (!resolved.channelId) {
+        toast('Could not resolve Channel ID — try pasting UC… ID directly', 'error');
+        quickAddInput.value = val;
+        quickAddInput.disabled = false;
+        return;
+      }
+      const ch = store.addChannel(resolved);
+      quickAddInput.value = '';
+      toast(t('toastAdded', ch.name), 'success');
+    } catch (err) {
+      console.error('Resolve error:', err);
+      toast('Failed to fetch channel info — check the URL', 'error');
+      quickAddInput.value = val;
+    } finally {
+      quickAddInput.disabled = false;
+      quickAddInput.focus();
+    }
+    return;
+  }
+
+  // Fallback: direct parsing for UC… IDs etc.
   const parsed = parseInput(val);
   const ch = store.addChannel(parsed);
   quickAddInput.value = '';
@@ -367,6 +430,32 @@ $('#modalCloseBtn').addEventListener('click', closeModal);
 $('#modalCancelBtn').addEventListener('click', closeModal);
 $('#modalSaveBtn').addEventListener('click', saveModal);
 modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+
+// Modal resolve button
+modalResolveBtn.addEventListener('click', async () => {
+  const url = modalUrl.value.trim();
+  if (!url) { modalUrl.focus(); return; }
+  modalResolveBtn.disabled = true;
+  modalResolveBtn.textContent = '…';
+  try {
+    const info = await resolveYouTubeChannel(url);
+    if (info.name) modalName.value = info.name;
+    if (info.handle) modalHandle.value = info.handle;
+    if (info.channelId) modalChannelId.value = info.channelId;
+    if (!info.channelId) {
+      toast('Could not resolve Channel ID — check the URL', 'error');
+    } else {
+      toast('Channel info resolved!', 'success');
+    }
+  } catch (err) {
+    console.error('Resolve error:', err);
+    toast('Failed to fetch channel info', 'error');
+  } finally {
+    modalResolveBtn.disabled = false;
+    modalResolveBtn.textContent = 'Resolve';
+  }
+});
+modalUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); modalResolveBtn.click(); } });
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
