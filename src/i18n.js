@@ -56,6 +56,9 @@ const translations = {
     firebaseNotConfigured: 'Firebase not configured — see .env file',
     // Lang toggle
     langLabel: 'عربي',
+    // Sidebar updates tab
+    updates: 'Updates',
+    updatesEmpty: 'Headlines will appear here as the ticker loads.',
   },
   ar: {
     appTitle: 'عارض البث المباشر متعدد القنوات',
@@ -103,6 +106,9 @@ const translations = {
     cloudSync: 'تمت المزامنة مع السحابة',
     firebaseNotConfigured: 'لم يتم إعداد Firebase — راجع ملف .env',
     langLabel: 'EN',
+    // Sidebar updates tab
+    updates: 'آخر الأخبار',
+    updatesEmpty: 'ستظهر العناوين هنا عند تحميل الشريط.',
   },
 };
 

@@ -50,22 +50,41 @@
     <div class="main-container">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h3 data-i18n="channels">Channels</h3>
-                <div class="sidebar-header-right">
-                    <span id="channelCount">0</span>
-                    <button class="btn-icon-sm" id="resetBtn" title="Reset to defaults">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            <!-- Tabs -->
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="channels" id="tabChannels" data-i18n="channels">Channels</button>
+                <button class="sidebar-tab" data-tab="updates" id="tabUpdates" data-i18n="updates">Updates</button>
+            </div>
+
+            <!-- Channels Panel -->
+            <div class="sidebar-panel active" id="panelChannels">
+                <div class="sidebar-header">
+                    <h3 data-i18n="channels">Channels</h3>
+                    <div class="sidebar-header-right">
+                        <span id="channelCount">0</span>
+                        <button class="btn-icon-sm" id="resetBtn" title="Reset to defaults">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="add-channel-form">
+                    <input type="text" id="quickAddInput" data-i18n-placeholder="quickAddPlaceholder" placeholder="Paste YouTube link, e.g. youtube.com/@CNN">
+                    <button class="btn btn-primary btn-sm" id="quickAddBtn">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                 </div>
+                <div class="sidebar-content" id="channelList"></div>
             </div>
-            <div class="add-channel-form">
-                <input type="text" id="quickAddInput" data-i18n-placeholder="quickAddPlaceholder" placeholder="Paste YouTube link, e.g. youtube.com/@CNN">
-                <button class="btn btn-primary btn-sm" id="quickAddBtn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-                </button>
+
+            <!-- Updates Panel -->
+            <div class="sidebar-panel" id="panelUpdates">
+                <div class="sidebar-header">
+                    <h3 data-i18n="updates">Updates</h3>
+                </div>
+                <div class="updates-feed" id="updatesFeed">
+                    <div class="update-empty" id="updatesEmpty" data-i18n="updatesEmpty">Headlines will appear here as the ticker loads.</div>
+                </div>
             </div>
-            <div class="sidebar-content" id="channelList"></div>
         </aside>
 
         <!-- Video Area -->
@@ -115,6 +134,13 @@
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
+
+    <!-- News Ticker -->
+    <div class="news-ticker">
+        <div class="ticker-track" id="tickerTrack" aria-live="polite">
+            <!-- Ticker items injected via JS -->
+        </div>
+    </div>
 
     <script type="module" src="/src/main.js"></script>
 </body>

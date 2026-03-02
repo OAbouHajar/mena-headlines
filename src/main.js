@@ -2,6 +2,7 @@ import { store } from './store.js';
 import { t, toggleLang, onLangChange } from './i18n.js';
 import { signInWithGoogle, signOutUser } from './firebase.js';
 import { onAuthReady } from './sync.js';
+import { NewsTicker } from './ticker.js';
 
 // ============ DOM References ============
 const $ = (sel) => document.querySelector(sel);
@@ -159,8 +160,7 @@ function renderChannelList() {
         ${ch.logo ? `<img src="${ch.logo}" alt="${esc(ch.name)}" class="channel-logo">` : initials(ch.name)}
       </div>
       <div class="channel-info">
-        <div class="channel-name">${esc(ch.name)}</div>
-        <div class="channel-handle">${esc(ch.handle)}${ch.channelId ? '' : ' ⚠️'}</div>
+        <div class="channel-name">${esc(ch.name)}${ch.channelId ? '' : ' ⚠️'}</div>
       </div>
       ${store.isActive(ch.id) ? '<div class="live-dot"></div>' : ''}
       <div class="channel-actions">
@@ -354,6 +354,17 @@ function normalizeHandle(val) {
   }
   return val.startsWith('@') ? val : '@' + val;
 }
+
+// ============ Sidebar Tabs ============
+const sidebarTabs = document.querySelectorAll('.sidebar-tab');
+sidebarTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    sidebarTabs.forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.sidebar-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1))?.classList.add('active');
+  });
+});
 
 // ============ Event Handlers ============
 
@@ -609,3 +620,27 @@ onAuthReady((user) => {
 $('#langToggleBtn').addEventListener('click', toggleLang);
 translateStatic();
 render();
+new NewsTicker();
+
+// ============ Global Keyboard Shortcuts ============
+document.addEventListener('keydown', (e) => {
+  // Ignore inputs and textareas
+  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+    if (e.key === 'Escape') closeModal();
+    return;
+  }
+  
+  const char = e.key.toLowerCase();
+  if (char === 's') {
+    e.preventDefault();
+    $('#toggleSidebarBtn').click();
+  } else if (char === 't') {
+    e.preventDefault();
+    $('#theatreBtn').click();
+  } else if (char === 'r') {
+    e.preventDefault();
+    $('#refreshBtn').click();
+  } else if (e.key === 'Escape') {
+    closeModal();
+  }
+});
