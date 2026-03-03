@@ -66,9 +66,9 @@ class Store {
     const validIds = new Set(this.channels.map((c) => c.id));
     this.active = this.active.filter((id) => validIds.has(id));
 
-    // Default: activate all channels
+    // Default: activate first 4 channels only
     if (this.active.length === 0) {
-      this.active = this.channels.map((c) => c.id);
+      this.active = this.channels.slice(0, 4).map((c) => c.id);
       save(STORAGE_KEYS.active, this.active);
     }
   }
