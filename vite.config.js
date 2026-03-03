@@ -155,9 +155,64 @@ confidence_level must be one of: Low, Moderate, High`;
     return JSON.parse(objMatch[0]);
   }
 
+  // ─── Server-side cache: keyed by lang ────────────────────────────────────────
+  const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  const serverCache  = new Map();       // lang → { data, timestamp }
+
+  async function runAnalysis(requestLang) {
+    const feeds = requestLang === 'ar' ? RSS_FEEDS_AR : RSS_FEEDS_EN;
+    console.log(`[intelligence] Running analysis for lang=${requestLang}...`);
+
+    const headlines = await fetchHeadlines(feeds);
+    if (!headlines.length) throw new Error(`No headlines available for lang=${requestLang}`);
+
+    const headlineText = headlines.slice(0, 25).map((h, i) => `${i + 1}. ${h}`).join('\n');
+
+    const { AzureOpenAI } = await import('openai');
+    const client = new AzureOpenAI({
+      endpoint:   ENDPOINT,
+      apiKey:     API_KEY,
+      deployment: DEPLOYMENT,
+      apiVersion: API_VERSION,
+    });
+
+    const response = await client.chat.completions.create({
+      model: MODEL_NAME,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.` },
+      ],
+      max_completion_tokens: 1200,
+    });
+
+    const choice = response.choices?.[0];
+    console.log(`[intelligence] finish_reason=${choice?.finish_reason}, lang=${requestLang}`);
+
+    const content = choice?.message?.content || choice?.message?.refusal || '';
+    if (!content) throw new Error(`Empty model response. finish_reason=${choice?.finish_reason}`);
+
+    const result = extractJSON(content);
+    result._generatedAt = Date.now(); // client uses this for "updated X ago"
+
+    serverCache.set(requestLang, { data: result, timestamp: Date.now() });
+    console.log(`[intelligence] Cache updated for lang=${requestLang}`);
+    return result;
+  }
+
   return {
     name: 'intelligence',
     configureServer(server) {
+      // Pre-warm both langs on startup (staggered so server is ready)
+      const prewarm = () => {
+        for (const l of ['en', 'ar']) {
+          runAnalysis(l).catch(e => console.warn(`[intelligence] Pre-warm failed (${l}):`, e.message));
+        }
+      };
+      setTimeout(prewarm, 3000);
+
+      // Background refresh every 30 minutes — independent of any client request
+      setInterval(prewarm, CACHE_TTL_MS);
+
       server.middlewares.use('/api/intelligence', (req, res) => {
         if (req.method !== 'POST') {
           res.writeHead(405, { 'Content-Type': 'application/json' });
@@ -171,62 +226,20 @@ confidence_level must be one of: Low, Moderate, High`;
             let parsed = {};
             try { parsed = JSON.parse(body); } catch {}
             const requestLang = parsed?.lang === 'ar' ? 'ar' : 'en';
-            const feeds = requestLang === 'ar' ? RSS_FEEDS_AR : RSS_FEEDS_EN;
-            console.log(`[intelligence] lang=${requestLang}, using ${feeds.length} feeds`);
 
-            // Fetch fresh headlines server-side from RSS
-            let headlines = await fetchHeadlines(feeds);
-            console.log(`[intelligence] RSS fetched ${headlines.length} headlines`);
-            if (headlines.length > 0) {
-              console.log('[intelligence] Sample:', headlines[0]);
-            }
-
-            // Fallback: use client-sent headlines if RSS failed
-            if (!headlines.length) {
-              headlines = parsed?.headlines || [];
-            }
-
-            if (!headlines.length) {
-              res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'No headlines available' }));
+            // Serve from cache instantly if available
+            const cached = serverCache.get(requestLang);
+            if (cached) {
+              const ageMins = Math.round((Date.now() - cached.timestamp) / 60000);
+              console.log(`[intelligence] Cache hit lang=${requestLang} (age: ${ageMins}m)`);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(cached.data));
               return;
             }
 
-            const headlineText = headlines.slice(0, 25).map((h, i) => `${i + 1}. ${h}`).join('\n');
-
-            const { AzureOpenAI } = await import('openai');
-            const client = new AzureOpenAI({
-              endpoint:   ENDPOINT,
-              apiKey:     API_KEY,
-              deployment: DEPLOYMENT,
-              apiVersion: API_VERSION,
-            });
-
-            const response = await client.chat.completions.create({
-              model: MODEL_NAME,
-              messages: [
-                { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.` },
-              ],
-              max_completion_tokens: 1200,
-            });
-
-            const choice = response.choices?.[0];
-            console.log('[intelligence] finish_reason:', choice?.finish_reason);
-            console.log('[intelligence] content_filter:', JSON.stringify(choice?.content_filter_results || 'n/a'));
-            console.log('[intelligence] refusal:', choice?.message?.refusal);
-
-            // content can be null when the model refuses or a content filter fires
-            const content = choice?.message?.content || choice?.message?.refusal || '';
-            console.log('[intelligence] Raw AI response:', content.slice(0, 500));
-
-            if (!content) {
-              throw new Error(`Empty response from model. finish_reason=${choice?.finish_reason}`);
-            }
-
-            const result = extractJSON(content);
-            console.log('[intelligence] Parsed keys:', Object.keys(result));
-
+            // Cache miss (pre-warm not done yet) — fetch on demand
+            console.log(`[intelligence] Cache miss lang=${requestLang}, fetching on demand...`);
+            const result = await runAnalysis(requestLang);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(result));
           } catch (err) {

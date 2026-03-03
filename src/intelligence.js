@@ -5,8 +5,8 @@
 
 import { t, lang, onLangChange } from './i18n.js';
 
-const CACHE_TTL = 60_000;        // 60 seconds
-const AUTO_REFRESH = 120_000;    // 2 minutes
+const CACHE_TTL = 25 * 60_000;   // 25 minutes (server refreshes every 30)
+const AUTO_REFRESH = 30 * 60_000; // 30 minutes — matches server background refresh
 
 let _cache = null;               // { data, timestamp }
 let _refreshTimer = null;
@@ -68,7 +68,8 @@ async function fetchIntelligence() {
     console.log('[Intelligence] risk_level:', data.risk_level);
 
     _cache = { data, timestamp: Date.now() };
-    _lastFetchTime = Date.now();
+    // Use server-generated timestamp so "updated X ago" reflects when AI ran, not when we fetched
+    _lastFetchTime = data._generatedAt || Date.now();
     renderData(data);
   } catch (err) {
     console.error('[Intelligence]', err);
