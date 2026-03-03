@@ -84,6 +84,10 @@ const translations = {
     intelConfModerate: 'Moderate',
     intelConfHigh: 'High',
     intelHeaderLoading: 'Analyzing latest news with AI…',
+    intelNow: 'Now',
+    intelHoursAgo: (h) => `${h}h ago`,
+    intelOlderTitle: 'Older report',
+    intelNewerTitle: 'Newer report',
   },
   ar: {
     appTitle: 'منصة الاستخبارات المباشرة',
@@ -159,6 +163,10 @@ const translations = {
     intelConfModerate: 'متوسطة',
     intelConfHigh: 'عالية',
     intelHeaderLoading: 'جاري تحليل الاخبار باستخدام الذكاء الاصطناعي',
+    intelNow: 'الآن',
+    intelHoursAgo: (h) => `منذ ${h}س`,
+    intelOlderTitle: 'تقرير أقدم',
+    intelNewerTitle: 'تقرير أحدث',
   },
 };
 
