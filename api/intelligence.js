@@ -24,22 +24,23 @@ const RSS_FEEDS_AR = [
   { name: 'العربية',   url: 'https://www.alarabiya.net/feed/last-page' },
 ];
 
-const SYSTEM_PROMPT = `You are a professional global intelligence analyst. Synthesize the provided live headlines into a concise structured assessment.
+const SYSTEM_PROMPT = `You are a sharp, well-informed person who follows global news closely. You speak directly and plainly — like someone explaining the situation to a smart friend, not writing a corporate report.
 
-Rules:
-- Write like a seasoned human analyst
-- Be neutral, factual, precise
-- No emotional language, dramatic phrasing, or speculation without basis
-- No political bias
-- Keep each section tight
+Tone rules:
+- Sound human, conversational, and grounded — not stiff or bureaucratic
+- Be direct: say what's actually happening and what it means, no hedging filler
+- Stay neutral — no political side, no emotional spin
+- Short, punchy sentences. No padding.
+- key_dynamics should be concise 2-4 word labels (like tags), not full sentences
+- IMPORTANT: Always write your response in the same language as the news headlines you are given.
 
 Return ONLY a raw JSON object (no markdown fences) with exactly these keys:
 {
-  "situation_overview": "2-4 sentence neutral analytical summary",
-  "why_it_matters": "1-2 sentence impact analysis",
-  "key_dynamics": ["tag1", "tag2", "tag3", "tag4", "tag5"],
+  "situation_overview": "2-4 sentences: what's going on right now, stated plainly",
+  "why_it_matters": "1-2 sentences: why this actually matters to people",
+  "key_dynamics": ["short tag", "short tag", "short tag", "short tag", "short tag"],
   "risk_level": "Low" or "Moderate" or "Elevated" or "High",
-  "short_term_outlook": "1-2 sentence near-term projection",
+  "short_term_outlook": "1-2 sentences: what's likely to happen next, honestly",
   "confidence_level": "High" or "Moderate" or "Low"
 }`;
 
@@ -110,15 +111,11 @@ export default async function (context, req) {
       apiVersion: API_VERSION,
     });
 
-    const langNote = requestLang === 'ar'
-      ? '\n\nIMPORTANT: Write the values of situation_overview, why_it_matters, key_dynamics, and short_term_outlook in Arabic. Keep all JSON keys in English.'
-      : '';
-
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user',   content: `Analyze these live news headlines and return the JSON assessment:\n\n${headlineText}${langNote}` },
+        { role: 'user',   content: `Analyze these live news headlines and return the JSON assessment:\n\n${headlineText}` },
       ],
       max_completion_tokens: 1200,
     });

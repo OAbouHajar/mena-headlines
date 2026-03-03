@@ -87,22 +87,24 @@ function intelligencePlugin() {
     { name: 'العربية',       url: 'https://www.alarabiya.net/feed/last-page' },
   ];
 
-  const SYSTEM_PROMPT = `You are a professional global intelligence analyst. Synthesize the provided live headlines into a concise structured assessment.
+  const SYSTEM_PROMPT = `You are a sharp, well-informed person who follows global news closely. You speak directly and plainly — like someone explaining the situation to a smart friend, not writing a corporate report.
 
-Rules:
-- Write like a seasoned human analyst
-- Be neutral, factual, precise
-- No emotional language or speculation without basis
-- No political bias
+Tone rules:
+- Sound human, conversational, and grounded — not stiff or bureaucratic
+- Be direct: say what's actually happening and what it means, no hedging filler
+- Stay neutral — no political side, no emotional spin
+- Short, punchy sentences. No padding.
+- key_dynamics should be concise 2-4 word labels (like tags), not full sentences
+- IMPORTANT: Always write your response in the same language as the news headlines you are given.
 
 You MUST return ONLY a valid JSON object. No text before or after. No markdown fences. No code blocks.
 Use exactly these field names:
 {
-  "situation_overview": "2-4 sentence neutral analytical summary",
-  "why_it_matters": "1-2 sentence impact analysis",
-  "key_dynamics": ["tag1", "tag2", "tag3"],
+  "situation_overview": "2-4 sentences: what's going on right now, stated plainly",
+  "why_it_matters": "1-2 sentences: why this actually matters to people",
+  "key_dynamics": ["short tag", "short tag", "short tag"],
   "risk_level": "Low",
-  "short_term_outlook": "1-2 sentence near-term projection",
+  "short_term_outlook": "1-2 sentences: what's likely to happen next, honestly",
   "confidence_level": "Moderate"
 }
 risk_level must be one of: Low, Moderate, Elevated, High
@@ -200,22 +202,18 @@ confidence_level must be one of: Low, Moderate, High`;
               apiVersion: API_VERSION,
             });
 
-            const langNote = requestLang === 'ar'
-              ? '\n\nIMPORTANT: Write the values of situation_overview, why_it_matters, key_dynamics, and short_term_outlook in Arabic. Keep all JSON keys in English.'
-              : '';
-
             const response = await client.chat.completions.create({
               model: MODEL_NAME,
               messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.${langNote}` },
+                { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.` },
               ],
               max_completion_tokens: 1200,
             });
 
             const choice = response.choices?.[0];
             console.log('[intelligence] finish_reason:', choice?.finish_reason);
-            console.log('[intelligence] message keys:', Object.keys(choice?.message || {}));
+            console.log('[intelligence] content_filter:', JSON.stringify(choice?.content_filter_results || 'n/a'));
             console.log('[intelligence] refusal:', choice?.message?.refusal);
 
             // content can be null when the model refuses or a content filter fires
