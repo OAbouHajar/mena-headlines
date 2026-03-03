@@ -85,6 +85,7 @@ export class NewsTicker {
             html += `
                 <div class="ticker-item" data-channel="${mappedChannel}" tabindex="0">
                     <span class="ticker-badge breaking">${this.breakingLabel}</span>
+                    <span class="ticker-time">${this.timeAgo(item.pubDate)}</span>
                     <span class="ticker-text">${item.title}</span>
                     <span class="ticker-source">${item.source}</span>
                 </div>
@@ -110,7 +111,7 @@ export class NewsTicker {
                     <div class="update-headline">${item.title}</div>
                     <div class="update-meta">
                         <span class="update-source">${item.source}</span>
-                        <span>${timeAgo}</span>
+                        <span class="update-time">${timeAgo}</span>
                     </div>
                 </div>
             `;
