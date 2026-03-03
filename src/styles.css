@@ -9,7 +9,7 @@
 :root {
     --sidebar-width: 288px;
     --header-height: 52px;
-    --ticker-height: 36px;
+    --ticker-height: 75px;
     --card-header-h: 74px;
     --card-footer-h: 66px;
 
@@ -552,7 +552,7 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 .update-headline {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-secondary);
+    color: #f0ece6;
     line-height: 1.45;
     margin-bottom: 4px;
 }
@@ -566,7 +566,8 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
-.update-source { color: var(--accent-light); opacity: 0.72; }
+.update-source { color: #f0ece6; opacity: 0.9; }
+.update-time { color: #5ba8d4; opacity: 1; font-size: 9px; }
 .update-empty {
     padding: 28px 16px;
     text-align: center;
@@ -962,11 +963,11 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 .ticker-item {
     display: flex;
     align-items: center;
-    gap: 7px;
-    font-size: 13px;
-    color: var(--text-secondary);
+    gap: 8px;
+    font-size: 14.5px;
+    color: #f0ece6;
     cursor: pointer;
-    padding: 2px 8px;
+    padding: 3px 10px;
     border-radius: var(--radius-sm);
     transition: all var(--transition);
 }
@@ -976,9 +977,9 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 }
 /* Breaking news badge — red */
 .ticker-badge {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    padding: 2px 7px;
+    padding: 2px 8px;
     border-radius: 3px;
     letter-spacing: 0.07em;
     text-transform: uppercase;
@@ -1004,14 +1005,23 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 
 .ticker-source {
     font-weight: 700;
-    color: var(--text-muted);
-    font-size: 11px;
+    color: #f0ece6;
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin-left: 2px;
     flex-shrink: 0;
 }
 [dir="rtl"] .ticker-source { margin-left: 0; margin-right: 2px; }
+
+.ticker-time {
+    font-size: 11px;
+    font-weight: 600;
+    color: #5ba8d4;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+    opacity: 0.9;
+}
 
 .ticker-sep {
     width: 3px;
