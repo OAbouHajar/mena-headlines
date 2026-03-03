@@ -4,7 +4,7 @@
  * Fetches RSS headlines server-side, calls Azure OpenAI, returns structured JSON.
  */
 
-import { AzureOpenAI } from 'openai';
+const { AzureOpenAI } = require('openai');
 
 const API_KEY     = 'REDACTED_AZURE_OPENAI_KEY';
 const API_VERSION = '2024-12-01-preview';
@@ -84,7 +84,7 @@ function extractJSON(text) {
   return JSON.parse(objMatch[0]);
 }
 
-export default async function (context, req) {
+module.exports = async function (context, req) {
   if (req.method !== 'POST') {
     context.res = { status: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
     return;
