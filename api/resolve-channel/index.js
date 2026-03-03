@@ -4,7 +4,7 @@
  * 
  * GET /api/resolve-channel?handle=@almayadeentv
  */
-export default async function (context, req) {
+module.exports = async function (context, req) {
   const handle = req.query?.handle || '';
   if (!handle) {
     context.res = { status: 400, body: JSON.stringify({ error: 'Missing handle parameter' }) };

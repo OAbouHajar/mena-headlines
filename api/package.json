@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Azure Functions API",
   "private": true,
-  "type": "module",
   "dependencies": {
     "openai": "^6.25.0"
   }
