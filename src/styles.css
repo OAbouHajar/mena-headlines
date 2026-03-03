@@ -1530,7 +1530,7 @@ body.intel-open { overflow: hidden; }
 }
 .header-intel-text {
     font-size: 12px;
-    color: rgba(180,195,210,0.8);
+    color: #f0ece6;
     white-space: nowrap;
     display: inline-block;
     line-height: 20px;
