@@ -73,11 +73,18 @@ function intelligencePlugin() {
   const MODEL_NAME  = '***REMOVED***';
   const DEPLOYMENT  = '***REMOVED***';
 
-  // RSS feeds — same list as ticker.js
-  const RSS_FEEDS = [
+  // RSS feeds — English
+  const RSS_FEEDS_EN = [
     { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
     { name: 'BBC News',   url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
     { name: 'Sky News',   url: 'https://feeds.skynews.com/feeds/rss/world.rss' },
+  ];
+
+  // RSS feeds — Arabic
+  const RSS_FEEDS_AR = [
+    { name: 'الجزيرة',       url: 'https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9' },
+    { name: 'سكاي نيوز',     url: 'https://www.skynewsarabia.com/rss/breaking-news' },
+    { name: 'العربية',       url: 'https://www.alarabiya.net/feed/last-page' },
   ];
 
   const SYSTEM_PROMPT = `You are a professional global intelligence analyst. Synthesize the provided live headlines into a concise structured assessment.
@@ -102,7 +109,7 @@ risk_level must be one of: Low, Moderate, Elevated, High
 confidence_level must be one of: Low, Moderate, High`;
 
   // Robust RSS item title extractor — split on <item> then grab <title>
-  function extractTitles(xml) {
+  function extractTitles(xml, feedName) {
     const titles = [];
     // Split into items
     const items = xml.split(/<item[\s>]/i);
@@ -120,10 +127,10 @@ confidence_level must be one of: Low, Moderate, High`;
     return titles.slice(0, 10);
   }
 
-  async function fetchHeadlines() {
+  async function fetchHeadlines(feeds) {
     const all = [];
     await Promise.all(
-      RSS_FEEDS.map(async (feed) => {
+      feeds.map(async (feed) => {
         try {
           const r = await fetch(feed.url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
           const xml = await r.text();
@@ -159,8 +166,14 @@ confidence_level must be one of: Low, Moderate, High`;
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
           try {
+            let parsed = {};
+            try { parsed = JSON.parse(body); } catch {}
+            const requestLang = parsed?.lang === 'ar' ? 'ar' : 'en';
+            const feeds = requestLang === 'ar' ? RSS_FEEDS_AR : RSS_FEEDS_EN;
+            console.log(`[intelligence] lang=${requestLang}, using ${feeds.length} feeds`);
+
             // Fetch fresh headlines server-side from RSS
-            let headlines = await fetchHeadlines();
+            let headlines = await fetchHeadlines(feeds);
             console.log(`[intelligence] RSS fetched ${headlines.length} headlines`);
             if (headlines.length > 0) {
               console.log('[intelligence] Sample:', headlines[0]);
@@ -168,7 +181,7 @@ confidence_level must be one of: Low, Moderate, High`;
 
             // Fallback: use client-sent headlines if RSS failed
             if (!headlines.length) {
-              try { headlines = JSON.parse(body)?.headlines || []; } catch {}
+              headlines = parsed?.headlines || [];
             }
 
             if (!headlines.length) {
@@ -187,17 +200,31 @@ confidence_level must be one of: Low, Moderate, High`;
               apiVersion: API_VERSION,
             });
 
+            const langNote = requestLang === 'ar'
+              ? '\n\nIMPORTANT: Write the values of situation_overview, why_it_matters, key_dynamics, and short_term_outlook in Arabic. Keep all JSON keys in English.'
+              : '';
+
             const response = await client.chat.completions.create({
               model: MODEL_NAME,
               messages: [
                 { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.` },
+                { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.${langNote}` },
               ],
               max_completion_tokens: 1200,
             });
 
-            const content = response.choices?.[0]?.message?.content || '';
-            console.log('[intelligence] Raw AI response:', content.slice(0, 300));
+            const choice = response.choices?.[0];
+            console.log('[intelligence] finish_reason:', choice?.finish_reason);
+            console.log('[intelligence] message keys:', Object.keys(choice?.message || {}));
+            console.log('[intelligence] refusal:', choice?.message?.refusal);
+
+            // content can be null when the model refuses or a content filter fires
+            const content = choice?.message?.content || choice?.message?.refusal || '';
+            console.log('[intelligence] Raw AI response:', content.slice(0, 500));
+
+            if (!content) {
+              throw new Error(`Empty response from model. finish_reason=${choice?.finish_reason}`);
+            }
 
             const result = extractJSON(content);
             console.log('[intelligence] Parsed keys:', Object.keys(result));
