@@ -109,8 +109,45 @@ function startSecondsTimer() {
   }, 5000);
 }
 
-// ─── Renders ─────────────────────────────────────────────────────────────────
+// ─── Header summary bar ───────────────────────────────────────────────────────
+function updateHeaderBar(d) {
+  const bar  = document.getElementById('headerIntelBar');
+  const dot  = document.getElementById('headerIntelDot');
+  const text = document.getElementById('headerIntelText');
+  const riskEl = document.getElementById('headerIntelRisk');
+  if (!bar || !dot || !text || !riskEl) return;
+
+  bar.classList.remove('loading');
+
+  const overview  = d.situation_overview || '';
+  const separator = '\u2003•\u2003'; // em-space • em-space
+  // Duplicate text for seamless marquee loop
+  text.textContent = overview + separator + overview;
+  text.classList.remove('marquee');
+  void text.offsetWidth; // force reflow
+  text.classList.add('marquee');
+
+  const { cls, label } = riskConfig(d.risk_level);
+  dot.className   = `header-intel-dot ${cls}`;
+  riskEl.textContent = label;
+  riskEl.className   = `header-intel-risk ${cls} visible`;
+}
+
+function headerBarLoading() {
+  const bar  = document.getElementById('headerIntelBar');
+  const text = document.getElementById('headerIntelText');
+  const dot  = document.getElementById('headerIntelDot');
+  const riskEl = document.getElementById('headerIntelRisk');
+  if (!bar) return;
+  bar.classList.add('loading');
+  text.classList.remove('marquee');
+  text.textContent = '•••';
+  if (dot) dot.className = 'header-intel-dot';
+  if (riskEl) { riskEl.className = 'header-intel-risk'; riskEl.textContent = ''; }
+}
+
 function renderSkeleton() {
+  headerBarLoading();
   const body = document.getElementById('intelBody');
   if (!body) return;
   document.getElementById('intelTimestamp').textContent = t('intelAnalyzing');
@@ -149,6 +186,7 @@ function renderError(msg) {
 }
 
 function renderData(d) {
+  updateHeaderBar(d);
   const body = document.getElementById('intelBody');
   const tsEl = document.getElementById('intelTimestamp');
   if (!body) return;
@@ -289,12 +327,21 @@ export function initIntelPanel() {
   // Re-translate UI and re-fetch in new language on lang toggle
   onLangChange(() => {
     translatePanelUI();
+    headerBarLoading();
     if (_panelOpen) {
-      _cache = null; // force new fetch in new language
+      _cache = null;
       triggerFetch();
     }
   });
 
   // Set initial translated strings
   translatePanelUI();
+
+  // Wire header bar click → open panel
+  document.getElementById('headerIntelBar')?.addEventListener('click', openIntelPanel);
+
+  // Background fetch on startup to populate header bar (server cache likely warm)
+  setTimeout(() => {
+    if (!_cache) fetchIntelligence();
+  }, 4000);
 }

@@ -120,7 +120,6 @@ h1, h2, h3, h4, h5, h6 {
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    justify-content: space-between;
     padding: 0 16px;
     z-index: 100;
     position: relative;
@@ -272,7 +271,7 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 /* ============ Active Count Badge & Layout Group ============ */
 .layout-group { display: flex; align-items: center; gap: 4px; }
 .active-count-badge {
-    display: inline-flex;
+    display: none; /* hidden — restore with display:inline-flex */
     align-items: center;
     gap: 6px;
     padding: 3px 10px;
@@ -1339,4 +1338,109 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 
 /* ─── Body scroll when panel open ────────────── */
 body.intel-open { overflow: hidden; }
+
+/* ─── Header AI Summary Bar ─────────────────────────────────────────────────── */
+.header-intel-bar {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 18px;
+    cursor: pointer;
+    overflow: hidden;
+    border-left: 1px solid var(--border-light);
+    border-right: 1px solid var(--border-light);
+    align-self: stretch;
+    transition: background 0.2s;
+    position: relative;
+}
+.header-intel-bar:hover {
+    background: rgba(78,122,160,0.05);
+}
+
+/* Pulsing risk dot */
+.header-intel-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--border-light);
+    transition: background 0.4s, box-shadow 0.4s;
+}
+@keyframes dotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.55; transform: scale(0.8); }
+}
+.header-intel-dot.risk-low      { background: #4caf7d; box-shadow: 0 0 7px rgba(76,175,80,0.55);  animation: dotPulse 2.5s ease-in-out infinite; }
+.header-intel-dot.risk-moderate { background: #e8a838; box-shadow: 0 0 7px rgba(232,168,56,0.55); animation: dotPulse 2.5s ease-in-out infinite; }
+.header-intel-dot.risk-elevated { background: #e07b39; box-shadow: 0 0 7px rgba(224,123,57,0.55); animation: dotPulse 2s   ease-in-out infinite; }
+.header-intel-dot.risk-high     { background: #c94040; box-shadow: 0 0 7px rgba(201,64,64,0.55);  animation: dotPulse 1.4s ease-in-out infinite; }
+
+/* Scrolling text container */
+.header-intel-scroll {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    position: relative;
+    height: 20px;
+    display: flex;
+    align-items: center;
+}
+.header-intel-text {
+    font-size: 12px;
+    color: rgba(180,195,210,0.8);
+    white-space: nowrap;
+    display: inline-block;
+    line-height: 20px;
+    letter-spacing: 0.01em;
+}
+/* Loading shimmer state */
+.header-intel-bar.loading .header-intel-text {
+    min-width: 180px;
+    height: 11px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--bg-surface-2) 25%, rgba(78,122,160,0.12) 50%, var(--bg-surface-2) 75%);
+    background-size: 300% 100%;
+    animation: shimmer 1.6s infinite;
+    color: transparent;
+}
+/* Seamless marquee — text is duplicated in JS so -50% = one full copy */
+@keyframes headerMarquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+/* RTL: scroll in the opposite direction (left → right) */
+@keyframes headerMarqueeRTL {
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(0); }
+}
+.header-intel-text.marquee {
+    animation: headerMarquee 35s linear infinite;
+}
+[dir="rtl"] .header-intel-text.marquee {
+    animation: headerMarqueeRTL 35s linear infinite;
+}
+.header-intel-bar:hover .header-intel-text.marquee {
+    animation-play-state: paused;
+}
+
+/* Risk label pill */
+.header-intel-risk {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+.header-intel-risk.visible { opacity: 1; }
+.header-intel-risk.risk-low      { color: #4caf7d; background: rgba(76,175,80,0.1);   border: 1px solid rgba(76,175,80,0.25); }
+.header-intel-risk.risk-moderate { color: #e8a838; background: rgba(232,168,56,0.1);  border: 1px solid rgba(232,168,56,0.25); }
+.header-intel-risk.risk-elevated { color: #e07b39; background: rgba(224,123,57,0.1);  border: 1px solid rgba(224,123,57,0.25); }
+.header-intel-risk.risk-high     { color: #c94040; background: rgba(201,64,64,0.1);   border: 1px solid rgba(201,64,64,0.25); }
+
 
