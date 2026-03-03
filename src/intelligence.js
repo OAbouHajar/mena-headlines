@@ -1,7 +1,9 @@
 /**
  * Intelligence Panel — Live situational analysis via Azure OpenAI.
- * Bloomberg-terminal style. No-frills, editorial, analyst-grade.
+ * Bloomberg-terminal style. Fully bilingual EN/AR.
  */
+
+import { t, lang, onLangChange } from './i18n.js';
 
 const CACHE_TTL = 60_000;        // 60 seconds
 const AUTO_REFRESH = 120_000;    // 2 minutes
@@ -51,7 +53,7 @@ async function fetchIntelligence() {
     const res = await fetch('/api/intelligence', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ lang: lang() }),
     });
 
     if (!res.ok) {
@@ -70,7 +72,7 @@ async function fetchIntelligence() {
     renderData(data);
   } catch (err) {
     console.error('[Intelligence]', err);
-    renderError('Analysis unavailable. Will retry on next refresh.');
+    renderError(t('intelErrorMsg'));
   } finally {
     _isFetching = false;
   }
@@ -85,12 +87,13 @@ function triggerFetch() {
 // ─── Risk badge config ────────────────────────────────────────────────────────
 function riskConfig(level = '') {
   const map = {
-    low:      { cls: 'risk-low',      label: 'Low' },
-    moderate: { cls: 'risk-moderate', label: 'Moderate' },
-    elevated: { cls: 'risk-elevated', label: 'Elevated' },
-    high:     { cls: 'risk-high',     label: 'High' },
+    low:      { cls: 'risk-low',      labelKey: 'intelRiskLow' },
+    moderate: { cls: 'risk-moderate', labelKey: 'intelRiskModerate' },
+    elevated: { cls: 'risk-elevated', labelKey: 'intelRiskElevated' },
+    high:     { cls: 'risk-high',     labelKey: 'intelRiskHigh' },
   };
-  return map[(level || '').toLowerCase()] || map.moderate;
+  const entry = map[(level || '').toLowerCase()] || map.moderate;
+  return { cls: entry.cls, label: t(entry.labelKey) };
 }
 
 // ─── Seconds-ago label ────────────────────────────────────────────────────────
@@ -101,7 +104,7 @@ function startSecondsTimer() {
   _secondsTimer = setInterval(() => {
     if (!_lastFetchTime) return;
     const secs = Math.round((Date.now() - _lastFetchTime) / 1000);
-    if (el) el.textContent = secs < 60 ? `Updated ${secs}s ago` : `Updated ${Math.round(secs/60)}m ago`;
+    if (el) el.textContent = secs < 60 ? t('intelUpdatedSecs', secs) : t('intelUpdatedMins', Math.round(secs / 60));
   }, 5000);
 }
 
@@ -109,7 +112,7 @@ function startSecondsTimer() {
 function renderSkeleton() {
   const body = document.getElementById('intelBody');
   if (!body) return;
-  document.getElementById('intelTimestamp').textContent = 'Analyzing…';
+  document.getElementById('intelTimestamp').textContent = t('intelAnalyzing');
   body.innerHTML = `
     <div class="intel-skeleton">
       <div class="skel skel-title"></div>
@@ -150,44 +153,44 @@ function renderData(d) {
   if (!body) return;
 
   if (tsEl && _lastFetchTime) {
-    tsEl.textContent = 'Updated just now';
+    tsEl.textContent = t('intelUpdatedNow');
     startSecondsTimer();
   }
 
   const risk = riskConfig(d.risk_level);
   const tags = Array.isArray(d.key_dynamics)
-    ? d.key_dynamics.map(t => `<span class="intel-tag">${esc(t)}</span>`).join('')
+    ? d.key_dynamics.map(tag => `<span class="intel-tag">${esc(tag)}</span>`).join('')
     : '';
 
   body.innerHTML = `
     <section class="intel-section">
-      <h4 class="intel-section-label">Situation Overview</h4>
+      <h4 class="intel-section-label">${t('intelSituationOverview')}</h4>
       <p class="intel-text">${esc(d.situation_overview || '—')}</p>
     </section>
 
     <section class="intel-section">
-      <h4 class="intel-section-label">Why It Matters</h4>
+      <h4 class="intel-section-label">${t('intelWhyItMatters')}</h4>
       <p class="intel-text intel-text-muted">${esc(d.why_it_matters || '—')}</p>
     </section>
 
     <section class="intel-section">
-      <h4 class="intel-section-label">Key Dynamics</h4>
+      <h4 class="intel-section-label">${t('intelKeyDynamics')}</h4>
       <div class="intel-tags">${tags || '<span class="intel-no-data">—</span>'}</div>
     </section>
 
     <section class="intel-section intel-section-row">
       <div>
-        <h4 class="intel-section-label">Risk Level</h4>
+        <h4 class="intel-section-label">${t('intelRiskLevel')}</h4>
         <span class="intel-risk-badge ${risk.cls}">${risk.label}</span>
       </div>
       <div>
-        <h4 class="intel-section-label">Confidence</h4>
+        <h4 class="intel-section-label">${t('intelConfidence')}</h4>
         <span class="intel-confidence">${esc(d.confidence_level || '—')}</span>
       </div>
     </section>
 
     <section class="intel-section">
-      <h4 class="intel-section-label">Short-Term Outlook</h4>
+      <h4 class="intel-section-label">${t('intelOutlook')}</h4>
       <p class="intel-text">${esc(d.short_term_outlook || '—')}</p>
     </section>`;
 }
@@ -209,13 +212,14 @@ export function openIntelPanel() {
   panel.classList.add('open');
   document.body.classList.add('intel-open');
 
+  translatePanelUI();
   triggerFetch();
 
   // Auto-refresh every 2 minutes while open
   clearInterval(_refreshTimer);
   _refreshTimer = setInterval(() => {
     if (_panelOpen) {
-      _cache = null; // force re-fetch
+      _cache = null;
       triggerFetch();
     }
   }, AUTO_REFRESH);
@@ -235,10 +239,37 @@ export function closeIntelPanel() {
   clearInterval(_secondsTimer);
 }
 
+// ─── Translate all static panel UI strings ────────────────────────────────────
+function translatePanelUI() {
+  const title = document.querySelector('.intel-panel-title');
+  const ts    = document.getElementById('intelTimestamp');
+  const intelBtn = document.getElementById('intelBtn');
+  const refreshBtn = document.getElementById('intelRefreshBtn');
+  const closeBtn   = document.getElementById('intelCloseBtn');
+
+  if (title) {
+    // Keep the SVG icon, replace the text node
+    const svg = title.querySelector('svg');
+    title.textContent = t('intelPanelTitle');
+    if (svg) title.prepend(svg);
+  }
+  if (intelBtn) {
+    const svg = intelBtn.querySelector('svg');
+    const span = intelBtn.querySelector('span');
+    if (span) span.textContent = t('intelBtn');
+    intelBtn.setAttribute('aria-label', t('intelBtn'));
+  }
+  if (refreshBtn) refreshBtn.title = t('intelRefreshTitle');
+  if (closeBtn)   closeBtn.title   = t('intelCloseTitle');
+
+  // Re-render cached data in new language if available
+  if (_cache) renderData(_cache.data);
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 export function initIntelPanel() {
-  const backdrop = document.getElementById('intelBackdrop');
-  const closeBtn = document.getElementById('intelCloseBtn');
+  const backdrop   = document.getElementById('intelBackdrop');
+  const closeBtn   = document.getElementById('intelCloseBtn');
   const refreshBtn = document.getElementById('intelRefreshBtn');
 
   closeBtn?.addEventListener('click', closeIntelPanel);
@@ -253,4 +284,16 @@ export function initIntelPanel() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && _panelOpen) closeIntelPanel();
   });
+
+  // Re-translate UI and re-fetch in new language on lang toggle
+  onLangChange(() => {
+    translatePanelUI();
+    if (_panelOpen) {
+      _cache = null; // force new fetch in new language
+      triggerFetch();
+    }
+  });
+
+  // Set initial translated strings
+  translatePanelUI();
 }

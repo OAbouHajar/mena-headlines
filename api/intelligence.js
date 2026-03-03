@@ -12,10 +12,16 @@ const ENDPOINT    = 'https://aoai-inuvrovqthoi4.cognitiveservices.azure.com/';
 const MODEL_NAME  = 'gpt-5-mini';
 const DEPLOYMENT  = 'gpt-5-mini';
 
-const RSS_FEEDS = [
+const RSS_FEEDS_EN = [
   { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
   { name: 'BBC News',   url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
   { name: 'Sky News',   url: 'https://feeds.skynews.com/feeds/rss/world.rss' },
+];
+
+const RSS_FEEDS_AR = [
+  { name: 'الجزيرة',   url: 'https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9' },
+  { name: 'سكاي نيوز', url: 'https://www.skynewsarabia.com/rss/breaking-news' },
+  { name: 'العربية',   url: 'https://www.alarabiya.net/feed/last-page' },
 ];
 
 const SYSTEM_PROMPT = `You are a professional global intelligence analyst. Synthesize the provided live headlines into a concise structured assessment.
@@ -39,19 +45,24 @@ Return ONLY a raw JSON object (no markdown fences) with exactly these keys:
 
 function extractTitles(xml) {
   const titles = [];
-  const re = /<item[\s\S]*?<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/gi;
-  let match;
-  while ((match = re.exec(xml)) !== null) {
-    const t = match[1].replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"').trim();
-    if (t && t.length > 10) titles.push(t);
+  const items = xml.split(/<item[\s>]/i);
+  items.shift();
+  for (const item of items) {
+    const m = item.match(/<title[^>]*>\s*(?:<!\[CDATA\[)?\s*([\s\S]*?)\s*(?:\]\]>)?\s*<\/title>/i);
+    if (m) {
+      const t = m[1]
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/<[^>]+>/g, '').trim();
+      if (t && t.length > 10 && t.length < 300) titles.push(t);
+    }
   }
   return titles.slice(0, 10);
 }
 
-async function fetchHeadlines() {
+async function fetchHeadlines(feeds) {
   const all = [];
   await Promise.all(
-    RSS_FEEDS.map(async (feed) => {
+    feeds.map(async (feed) => {
       try {
         const r = await fetch(feed.url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
         const xml = await r.text();
@@ -65,9 +76,11 @@ async function fetchHeadlines() {
 }
 
 function extractJSON(text) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenced) return JSON.parse(fenced[1].trim());
-  return JSON.parse(text.trim());
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/s);
+  const raw = fenced ? fenced[1].trim() : text.trim();
+  const objMatch = raw.match(/\{[\s\S]*\}/);
+  if (!objMatch) throw new Error('No JSON object found in response');
+  return JSON.parse(objMatch[0]);
 }
 
 export default async function (context, req) {
@@ -77,7 +90,11 @@ export default async function (context, req) {
   }
 
   try {
-    const headlines = await fetchHeadlines();
+    const body = req.body || {};
+    const requestLang = body.lang === 'ar' ? 'ar' : 'en';
+    const feeds = requestLang === 'ar' ? RSS_FEEDS_AR : RSS_FEEDS_EN;
+
+    const headlines = await fetchHeadlines(feeds);
 
     if (!headlines.length) {
       context.res = { status: 400, body: JSON.stringify({ error: 'No headlines available' }) };
@@ -93,16 +110,21 @@ export default async function (context, req) {
       apiVersion: API_VERSION,
     });
 
+    const langNote = requestLang === 'ar'
+      ? '\n\nIMPORTANT: Write the values of situation_overview, why_it_matters, key_dynamics, and short_term_outlook in Arabic. Keep all JSON keys in English.'
+      : '';
+
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user',   content: `Analyze these live news headlines and return the JSON assessment:\n\n${headlineText}` },
+        { role: 'user',   content: `Analyze these live news headlines and return the JSON assessment:\n\n${headlineText}${langNote}` },
       ],
-      max_completion_tokens: 800,
+      max_completion_tokens: 1200,
     });
 
-    const content = response.choices?.[0]?.message?.content || '{}';
+    const choice = response.choices?.[0];
+    const content = choice?.message?.content || choice?.message?.refusal || '{}';
     const result  = extractJSON(content);
 
     context.res = {
