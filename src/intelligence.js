@@ -1,0 +1,256 @@
+/**
+ * Intelligence Panel — Live situational analysis via Azure OpenAI.
+ * Bloomberg-terminal style. No-frills, editorial, analyst-grade.
+ */
+
+const CACHE_TTL = 60_000;        // 60 seconds
+const AUTO_REFRESH = 120_000;    // 2 minutes
+
+let _cache = null;               // { data, timestamp }
+let _refreshTimer = null;
+let _fetchDebounce = null;
+let _isFetching = false;
+let _panelOpen = false;
+let _secondsTimer = null;
+let _lastFetchTime = null;
+
+// ─── Collect visible headlines from ticker + updates feed ─────────────────────
+function collectHeadlines() {
+  const headlines = new Set();
+
+  // From the news ticker items
+  document.querySelectorAll('.ticker-item .ticker-text').forEach(el => {
+    const text = el.textContent.trim();
+    if (text.length > 20) headlines.add(text);
+  });
+
+  // From the updates feed
+  document.querySelectorAll('.update-headline').forEach(el => {
+    const text = el.textContent.trim();
+    if (text.length > 20) headlines.add(text);
+  });
+
+  return [...headlines];
+}
+
+// ─── Fetch from /api/intelligence ─────────────────────────────────────────────
+// Server fetches RSS directly. We send a POST trigger (no body needed).
+async function fetchIntelligence() {
+  if (_isFetching) return;
+
+  // Serve cache if fresh
+  if (_cache && Date.now() - _cache.timestamp < CACHE_TTL) {
+    renderData(_cache.data);
+    return;
+  }
+
+  _isFetching = true;
+  renderSkeleton();
+
+  try {
+    const res = await fetch('/api/intelligence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Server error ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    console.log('[Intelligence] Response keys:', Object.keys(data));
+    console.log('[Intelligence] situation_overview:', data.situation_overview);
+    console.log('[Intelligence] risk_level:', data.risk_level);
+
+    _cache = { data, timestamp: Date.now() };
+    _lastFetchTime = Date.now();
+    renderData(data);
+  } catch (err) {
+    console.error('[Intelligence]', err);
+    renderError('Analysis unavailable. Will retry on next refresh.');
+  } finally {
+    _isFetching = false;
+  }
+}
+
+// ─── Debounced trigger ────────────────────────────────────────────────────────
+function triggerFetch() {
+  clearTimeout(_fetchDebounce);
+  _fetchDebounce = setTimeout(fetchIntelligence, 300);
+}
+
+// ─── Risk badge config ────────────────────────────────────────────────────────
+function riskConfig(level = '') {
+  const map = {
+    low:      { cls: 'risk-low',      label: 'Low' },
+    moderate: { cls: 'risk-moderate', label: 'Moderate' },
+    elevated: { cls: 'risk-elevated', label: 'Elevated' },
+    high:     { cls: 'risk-high',     label: 'High' },
+  };
+  return map[(level || '').toLowerCase()] || map.moderate;
+}
+
+// ─── Seconds-ago label ────────────────────────────────────────────────────────
+function startSecondsTimer() {
+  clearInterval(_secondsTimer);
+  const el = document.getElementById('intelTimestamp');
+  if (!el) return;
+  _secondsTimer = setInterval(() => {
+    if (!_lastFetchTime) return;
+    const secs = Math.round((Date.now() - _lastFetchTime) / 1000);
+    if (el) el.textContent = secs < 60 ? `Updated ${secs}s ago` : `Updated ${Math.round(secs/60)}m ago`;
+  }, 5000);
+}
+
+// ─── Renders ─────────────────────────────────────────────────────────────────
+function renderSkeleton() {
+  const body = document.getElementById('intelBody');
+  if (!body) return;
+  document.getElementById('intelTimestamp').textContent = 'Analyzing…';
+  body.innerHTML = `
+    <div class="intel-skeleton">
+      <div class="skel skel-title"></div>
+      <div class="skel skel-line"></div>
+      <div class="skel skel-line skel-short"></div>
+      <div class="skel skel-line"></div>
+    </div>
+    <div class="intel-skeleton" style="margin-top:18px">
+      <div class="skel skel-title skel-sm"></div>
+      <div class="skel skel-line skel-short"></div>
+    </div>
+    <div class="intel-skeleton" style="margin-top:18px">
+      <div class="skel skel-title skel-sm"></div>
+      <div class="skel skel-tags">
+        <div class="skel skel-tag"></div>
+        <div class="skel skel-tag"></div>
+        <div class="skel skel-tag"></div>
+      </div>
+    </div>`;
+}
+
+function renderError(msg) {
+  const body = document.getElementById('intelBody');
+  if (!body) return;
+  document.getElementById('intelTimestamp').textContent = '';
+  body.innerHTML = `
+    <div class="intel-error">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <p>${msg}</p>
+    </div>`;
+}
+
+function renderData(d) {
+  const body = document.getElementById('intelBody');
+  const tsEl = document.getElementById('intelTimestamp');
+  if (!body) return;
+
+  if (tsEl && _lastFetchTime) {
+    tsEl.textContent = 'Updated just now';
+    startSecondsTimer();
+  }
+
+  const risk = riskConfig(d.risk_level);
+  const tags = Array.isArray(d.key_dynamics)
+    ? d.key_dynamics.map(t => `<span class="intel-tag">${esc(t)}</span>`).join('')
+    : '';
+
+  body.innerHTML = `
+    <section class="intel-section">
+      <h4 class="intel-section-label">Situation Overview</h4>
+      <p class="intel-text">${esc(d.situation_overview || '—')}</p>
+    </section>
+
+    <section class="intel-section">
+      <h4 class="intel-section-label">Why It Matters</h4>
+      <p class="intel-text intel-text-muted">${esc(d.why_it_matters || '—')}</p>
+    </section>
+
+    <section class="intel-section">
+      <h4 class="intel-section-label">Key Dynamics</h4>
+      <div class="intel-tags">${tags || '<span class="intel-no-data">—</span>'}</div>
+    </section>
+
+    <section class="intel-section intel-section-row">
+      <div>
+        <h4 class="intel-section-label">Risk Level</h4>
+        <span class="intel-risk-badge ${risk.cls}">${risk.label}</span>
+      </div>
+      <div>
+        <h4 class="intel-section-label">Confidence</h4>
+        <span class="intel-confidence">${esc(d.confidence_level || '—')}</span>
+      </div>
+    </section>
+
+    <section class="intel-section">
+      <h4 class="intel-section-label">Short-Term Outlook</h4>
+      <p class="intel-text">${esc(d.short_term_outlook || '—')}</p>
+    </section>`;
+}
+
+function esc(str) {
+  const el = document.createElement('span');
+  el.textContent = String(str);
+  return el.innerHTML;
+}
+
+// ─── Panel open / close ───────────────────────────────────────────────────────
+export function openIntelPanel() {
+  const panel = document.getElementById('intelPanel');
+  const backdrop = document.getElementById('intelBackdrop');
+  if (!panel || !backdrop) return;
+
+  _panelOpen = true;
+  backdrop.classList.add('visible');
+  panel.classList.add('open');
+  document.body.classList.add('intel-open');
+
+  triggerFetch();
+
+  // Auto-refresh every 2 minutes while open
+  clearInterval(_refreshTimer);
+  _refreshTimer = setInterval(() => {
+    if (_panelOpen) {
+      _cache = null; // force re-fetch
+      triggerFetch();
+    }
+  }, AUTO_REFRESH);
+}
+
+export function closeIntelPanel() {
+  const panel = document.getElementById('intelPanel');
+  const backdrop = document.getElementById('intelBackdrop');
+  if (!panel || !backdrop) return;
+
+  _panelOpen = false;
+  panel.classList.remove('open');
+  backdrop.classList.remove('visible');
+  document.body.classList.remove('intel-open');
+
+  clearInterval(_refreshTimer);
+  clearInterval(_secondsTimer);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+export function initIntelPanel() {
+  const backdrop = document.getElementById('intelBackdrop');
+  const closeBtn = document.getElementById('intelCloseBtn');
+  const refreshBtn = document.getElementById('intelRefreshBtn');
+
+  closeBtn?.addEventListener('click', closeIntelPanel);
+  backdrop?.addEventListener('click', closeIntelPanel);
+
+  refreshBtn?.addEventListener('click', () => {
+    _cache = null;
+    triggerFetch();
+  });
+
+  // Keyboard: Escape closes
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && _panelOpen) closeIntelPanel();
+  });
+}

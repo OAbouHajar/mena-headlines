@@ -23,9 +23,9 @@
         </div>
         <div class="header-controls">
             <div class="layout-group" id="layoutGroup"></div>
-            <button class="btn btn-secondary" id="addChannelBtn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                <span data-i18n="addChannel">Add Channel</span>
+            <button class="btn btn-intel" id="intelBtn" aria-label="AI Intelligence">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4 4 4 0 0 0 1.1 2.76C6.27 10.1 4 12.85 4 16h16c0-3.15-2.27-5.9-5.1-7.24A4 4 0 0 0 16 6a4 4 0 0 0-4-4z"/><path d="M9 16v2a3 3 0 0 0 6 0v-2"/></svg>
+                <span>AI Intelligence</span>
             </button>
             <button class="btn-icon" id="theatreBtn" title="Theatre Mode (T)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
@@ -63,6 +63,9 @@
                     <h3 data-i18n="channels">Channels</h3>
                     <div class="sidebar-header-right">
                         <span id="channelCount">0</span>
+                        <button class="btn-icon-sm" id="addChannelBtn" title="Add Channel" aria-label="Add Channel">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+                        </button>
                         <button class="btn-icon-sm" id="resetBtn" title="Reset to defaults">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
                         </button>
@@ -136,6 +139,35 @@
             <!-- Ticker items injected via JS -->
         </div>
     </div>
+
+    <!-- Intelligence Backdrop -->
+    <div class="intel-backdrop" id="intelBackdrop"></div>
+
+    <!-- Intelligence Slide-Over Panel -->
+    <aside class="intel-panel" id="intelPanel" role="complementary" aria-label="AI Intelligence Panel">
+        <div class="intel-panel-header">
+            <div class="intel-panel-title-group">
+                <div class="intel-panel-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2a4 4 0 0 0-4 4 4 4 0 0 0 1.1 2.76C6.27 10.1 4 12.85 4 16h16c0-3.15-2.27-5.9-5.1-7.24A4 4 0 0 0 16 6a4 4 0 0 0-4-4z"/><path d="M9 16v2a3 3 0 0 0 6 0v-2"/></svg>
+                    Live Intelligence Summary
+                </div>
+                <span class="intel-timestamp" id="intelTimestamp"></span>
+            </div>
+            <div class="intel-panel-actions">
+                <button class="btn-icon-sm" id="intelRefreshBtn" title="Refresh analysis">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                </button>
+                <button class="btn-icon-sm" id="intelCloseBtn" title="Close (Esc)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="intel-panel-body" id="intelBody">
+            <div class="intel-empty">
+                <p>Click refresh or wait for analysis to load.</p>
+            </div>
+        </div>
+    </aside>
 
     <script type="module" src="/src/main.js"></script>
 </body>

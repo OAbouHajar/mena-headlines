@@ -3,6 +3,7 @@ import { t, toggleLang, onLangChange } from './i18n.js';
 import { signInWithGoogle, signOutUser } from './firebase.js';
 import { onAuthReady } from './sync.js';
 import { NewsTicker } from './ticker.js';
+import { initIntelPanel, openIntelPanel, closeIntelPanel } from './intelligence.js';
 
 // ============ DOM References ============
 const $ = (sel) => document.querySelector(sel);
@@ -438,6 +439,7 @@ videoGrid.addEventListener('click', (e) => {
 // Header buttons
 $('#toggleSidebarBtn').addEventListener('click', () => sidebar.classList.toggle('collapsed'));
 $('#addChannelBtn').addEventListener('click', () => openModal());
+$('#intelBtn').addEventListener('click', () => openIntelPanel());
 $('#theatreBtn').addEventListener('click', () => document.body.classList.toggle('theatre'));
 $('#refreshBtn').addEventListener('click', () => {
   videoGrid.querySelectorAll('iframe').forEach((iframe) => {
@@ -496,6 +498,7 @@ document.addEventListener('keydown', (e) => {
       document.querySelectorAll('.video-cell.fullscreen').forEach((c) => c.classList.remove('fullscreen'));
       if (document.body.classList.contains('theatre')) document.body.classList.remove('theatre');
       closeModal();
+      closeIntelPanel();
       break;
 
   }
@@ -599,7 +602,7 @@ $('#langToggleBtn').addEventListener('click', toggleLang);
 translateStatic();
 render();
 new NewsTicker();
-
+initIntelPanel();
 // ============ Global Keyboard Shortcuts ============
 document.addEventListener('keydown', (e) => {
   // Ignore inputs and textareas
