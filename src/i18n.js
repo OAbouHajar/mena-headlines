@@ -5,7 +5,7 @@ const STORAGE_KEY = 'ytmv_lang';
 const translations = {
   en: {
     // Header
-    appTitle: 'Multi-Channel Live Viewer',
+    appTitle: 'Live Intelligence Platform',
     addChannel: 'Add Channel',
     theatreTitle: 'Theatre Mode (T)',
     refreshTitle: 'Refresh All (R)',
@@ -61,7 +61,7 @@ const translations = {
     updatesEmpty: 'Headlines will appear here as the ticker loads.',
   },
   ar: {
-    appTitle: 'عارض البث المباشر متعدد القنوات',
+    appTitle: 'منصة الاستخبارات المباشرة',
     addChannel: 'إضافة قناة',
     theatreTitle: 'وضع المسرح (T)',
     refreshTitle: 'تحديث الكل (R)',

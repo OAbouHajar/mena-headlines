@@ -13,7 +13,6 @@ const channelList = $('#channelList');
 const channelCount = $('#channelCount');
 const videoGrid = $('#videoGrid');
 const layoutGroup = $('#layoutGroup');
-const quickAddInput = $('#quickAddInput');
 const toastContainer = $('#toastContainer');
 
 // Auth
@@ -39,6 +38,22 @@ function gridCols(count) {
   if (count === 2) return '1fr 1fr';
   const cols = Math.ceil(Math.sqrt(count));
   return `repeat(${cols}, 1fr)`;
+}
+
+// ============ Category inference ============
+function getCategory(ch) {
+  const n = (ch.name + ' ' + (ch.handle || '')).toLowerCase();
+  if (/market|financ|bloomberg|cnbc|nasdaq|dow|invest|stock/.test(n)) return 'MARKETS';
+  if (/arabic|arabia|arabiya|عربي|aljaz.*ar|مباشر|sky.*ar|العرب/.test(n)) return 'MENA';
+  if (/sport|football|soccer|goal|nba|nfl/.test(n)) return 'SPORTS';
+  if (/tech|wired|verge|digital/.test(n)) return 'TECH';
+  if (/weather|climate|accuweather/.test(n)) return 'WEATHER';
+  return 'GLOBAL';
+}
+
+// ============ Card timestamp ============
+function nowTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // ============ Translate static HTML (data-i18n) ============
@@ -154,24 +169,29 @@ function renderChannelList() {
 
   channelList.innerHTML = store.channels
     .map(
-      (ch, index) => `
-    <div class="channel-card ${store.isActive(ch.id) ? 'active' : ''}" data-id="${ch.id}" data-index="${index}" draggable="true">
+      (ch, index) => {
+        const isActive = store.isActive(ch.id);
+        const cat = getCategory(ch);
+        return `
+    <div class="channel-card ${isActive ? 'active' : ''}" data-id="${ch.id}" data-index="${index}" draggable="true">
       <div class="channel-avatar" style="background:${ch.logo ? 'transparent' : ch.color}">
         ${ch.logo ? `<img src="${ch.logo}" alt="${esc(ch.name)}" class="channel-logo">` : initials(ch.name)}
       </div>
       <div class="channel-info">
         <div class="channel-name">${esc(ch.name)}${ch.channelId ? '' : ' ⚠️'}</div>
+        <div class="channel-status-line">${cat}${isActive ? ' · Live' : ''}</div>
       </div>
-      ${store.isActive(ch.id) ? '<div class="live-dot"></div>' : ''}
+      ${isActive ? '<span class="ch-live-chip">Live</span>' : ''}
       <div class="channel-actions">
         <button class="btn-icon-sm" data-action="edit" data-id="${ch.id}" title="Edit">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
         <button class="btn-icon-sm" data-action="remove" data-id="${ch.id}" title="Remove" style="color:var(--danger)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </div>
-    </div>`
+    </div>`;
+      }
     )
     .join('');
 
@@ -226,13 +246,13 @@ function renderGrid() {
   if (store.active.length === 0) {
     videoGrid.innerHTML = `
       <div class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polygon points="8,5 19,12 8,19"/></svg>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
         <p>${t('emptyState')}</p>
       </div>`;
     return;
   }
 
-  // Build list of current iframe channel IDs to avoid re-creating them
+  // Reuse existing iframes to avoid reload
   const existing = new Map();
   videoGrid.querySelectorAll('.video-cell').forEach((cell) => {
     existing.set(cell.dataset.channelId, cell);
@@ -244,7 +264,6 @@ function renderGrid() {
     const ch = store.getChannel(chId);
     if (!ch) return;
 
-    // Reuse existing cell if possible to avoid iframe reload
     if (existing.has(ch.id)) {
       fragment.appendChild(existing.get(ch.id));
       existing.delete(ch.id);
@@ -256,39 +275,42 @@ function renderGrid() {
     cell.dataset.channelId = ch.id;
 
     const url = embedUrl(ch.channelId);
+
     if (url) {
       cell.innerHTML = `
-        <div class="video-cell-overlay">
-          <span class="video-cell-title">${esc(ch.name)}</span>
-          <div class="video-cell-btns">
-            <button class="cell-btn" data-action="newtab" data-handle="${esc(ch.handle)}" title="${t('openYT')}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            </button>
-            <button class="cell-btn" data-action="fullscreen" title="${t('fullscreen')}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-            </button>
-            <button class="cell-btn" data-action="reload" title="${t('reload')}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-            </button>
+        <iframe src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+        <div class="cell-overlay">
+          <div class="cell-overlay-bar">
+            <span class="cell-name">${esc(ch.name)}</span>
+            <div class="cell-actions">
+              <button class="cell-btn" data-action="newtab" data-handle="${esc(ch.handle)}" title="${t('openYT')}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </button>
+              <button class="cell-btn" data-action="fullscreen" title="${t('fullscreen')}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              </button>
+              <button class="cell-btn" data-action="reload" title="${t('reload')}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              </button>
+              <button class="cell-btn danger" data-action="remove" data-id="${ch.id}" title="Remove">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
           </div>
-        </div>
-        <iframe src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>`;
+        </div>`;
     } else {
       cell.innerHTML = `
-        <div class="error-state">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <p><strong>${esc(ch.name)}</strong></p>
-          <p>${t('noChannelId')}</p>
-          <button class="btn btn-secondary btn-sm" data-action="edit-from-grid" data-id="${ch.id}">${t('editChannelBtn')}</button>
+        <div class="cell-no-stream">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.25"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <p>${esc(ch.name)}</p>
+          <button class="cell-btn-ghost" data-action="edit-from-grid" data-id="${ch.id}">Set stream ID</button>
         </div>`;
     }
 
     fragment.appendChild(cell);
   });
 
-  // Remove cells no longer active
   existing.forEach((cell) => cell.remove());
-
   videoGrid.innerHTML = '';
   videoGrid.appendChild(fragment);
 }
@@ -404,58 +426,14 @@ videoGrid.addEventListener('click', (e) => {
     const iframe = btn.closest('.video-cell').querySelector('iframe');
     if (iframe) { const src = iframe.src; iframe.src = ''; requestAnimationFrame(() => iframe.src = src); }
   }
+  if (action === 'remove') {
+    const id = btn.dataset.id;
+    if (id) { store.removeChannel(id); }
+  }
   if (action === 'edit-from-grid') {
     openModal(btn.dataset.id);
   }
 });
-
-// Quick add
-$('#quickAddBtn').addEventListener('click', quickAdd);
-quickAddInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') quickAdd(); });
-
-async function quickAdd() {
-  const val = quickAddInput.value.trim();
-  if (!val) return;
-
-  // If it looks like a YouTube URL or @handle, resolve it
-  const isUrl = val.includes('youtube.com/') || val.includes('youtu.be/');
-  const isHandle = val.startsWith('@');
-
-  if (isUrl || isHandle) {
-    quickAddInput.disabled = true;
-    quickAddInput.value = 'Resolving channel…';
-    try {
-      const resolved = await resolveYouTubeChannel(val);
-      if (!resolved.channelId) {
-        toast('Could not resolve Channel ID — try pasting UC… ID directly', 'error');
-        quickAddInput.value = val;
-        quickAddInput.disabled = false;
-        return;
-      }
-      const ch = store.addChannel(resolved);
-      quickAddInput.value = '';
-      toast(t('toastAdded', ch.name), 'success');
-    } catch (err) {
-      console.error('Resolve error:', err);
-      toast('Failed to fetch channel info — check the URL', 'error');
-      quickAddInput.value = val;
-    } finally {
-      quickAddInput.disabled = false;
-      quickAddInput.focus();
-    }
-    return;
-  }
-
-  // Fallback: direct parsing for UC… IDs etc.
-  const parsed = parseInput(val);
-  const ch = store.addChannel(parsed);
-  quickAddInput.value = '';
-  if (!ch.channelId) {
-    toast(t('toastAddedWarn', ch.name), 'warning');
-  } else {
-    toast(t('toastAdded', ch.name), 'success');
-  }
-}
 
 // Header buttons
 $('#toggleSidebarBtn').addEventListener('click', () => sidebar.classList.toggle('collapsed'));
