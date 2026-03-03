@@ -5,15 +5,17 @@
 
 import { t, lang, onLangChange } from './i18n.js';
 
-const CACHE_TTL = 25 * 60_000;   // 25 minutes (server refreshes every 30)
-const AUTO_REFRESH = 30 * 60_000; // 30 minutes — matches server background refresh
+const CACHE_TTL   = 5 * 60_000;    // 5 min client cache for latest report
+const AUTO_REFRESH = 3 * 60 * 60_000; // 3 hours — matches server cache TTL
 
-let _cache = null;               // { data, timestamp }
-let _refreshTimer = null;
+let _historyCaches = {};  // keyed "lang:index" → { data, timestamp }
+let _historyIndex  = 0;   // currently viewing (0 = latest)
+let _historyTotal  = 1;   // total reports available
+let _refreshTimer  = null;
 let _fetchDebounce = null;
-let _isFetching = false;
-let _panelOpen = false;
-let _secondsTimer = null;
+let _isFetching    = false;
+let _panelOpen     = false;
+let _secondsTimer  = null;
 let _lastFetchTime = null;
 
 // ─── Collect visible headlines from ticker + updates feed ─────────────────────
@@ -35,25 +37,53 @@ function collectHeadlines() {
   return [...headlines];
 }
 
-// ─── Fetch from /api/intelligence ─────────────────────────────────────────────
-// Server fetches RSS directly. We send a POST trigger (no body needed).
-async function fetchIntelligence() {
-  if (_isFetching) return;
+// ─── History navigation helpers ──────────────────────────────────────────────
+function historyLabel(index) {
+  if (index === 0) return t('intelNow');
+  return t('intelHoursAgo', index * 3);
+}
 
-  // Serve cache if fresh
-  if (_cache && Date.now() - _cache.timestamp < CACHE_TTL) {
-    renderData(_cache.data);
+function updateHistoryNav() {
+  const nav      = document.getElementById('intelHistoryNav');
+  const label    = document.getElementById('intelHistoryLabel');
+  const olderBtn = document.getElementById('intelOlderBtn');
+  const newerBtn = document.getElementById('intelNewerBtn');
+  if (!nav) return;
+
+  // Always show nav so users see the time context
+  nav.style.display = 'flex';
+  if (label)    label.textContent = historyLabel(_historyIndex);
+  if (olderBtn) olderBtn.disabled = _historyIndex >= _historyTotal - 1;
+  if (newerBtn) newerBtn.disabled = _historyIndex <= 0;
+  if (olderBtn) olderBtn.title    = t('intelOlderTitle');
+  if (newerBtn) newerBtn.title    = t('intelNewerTitle');
+}
+
+// ─── Fetch from /api/intelligence ─────────────────────────────────────────────
+async function fetchIntelligence(histIdx) {
+  if (histIdx === undefined) histIdx = _historyIndex;
+
+  // For historical reports: cache forever (they're immutable)
+  // For latest (index 0): cache 5 minutes
+  const cacheKey = `${lang()}:${histIdx}`;
+  const cached   = _historyCaches[cacheKey];
+  const ttl      = histIdx > 0 ? Infinity : CACHE_TTL;
+  if (cached && Date.now() - cached.timestamp < ttl) {
+    renderData(cached.data);
+    updateHistoryNav();
     return;
   }
 
   _isFetching = true;
   renderSkeleton();
+  document.getElementById('intelRefreshBtn')?.classList.add('spinning');
+  document.getElementById('intelPanel')?.classList.add('fetching');
 
   try {
     const res = await fetch('/api/intelligence', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lang: lang() }),
+      body: JSON.stringify({ lang: lang(), historyIndex: histIdx }),
     });
 
     if (!res.ok) {
@@ -63,26 +93,28 @@ async function fetchIntelligence() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    console.log('[Intelligence] Response keys:', Object.keys(data));
-    console.log('[Intelligence] situation_overview:', data.situation_overview);
-    console.log('[Intelligence] risk_level:', data.risk_level);
+    // Update history state from server response
+    if (typeof data._historyIndex === 'number') _historyIndex = data._historyIndex;
+    if (typeof data._historyTotal === 'number') _historyTotal = data._historyTotal;
 
-    _cache = { data, timestamp: Date.now() };
-    // Use server-generated timestamp so "updated X ago" reflects when AI ran, not when we fetched
+    _historyCaches[`${lang()}:${histIdx}`] = { data, timestamp: Date.now() };
     _lastFetchTime = data._generatedAt || Date.now();
     renderData(data);
+    updateHistoryNav();
   } catch (err) {
     console.error('[Intelligence]', err);
     renderError(t('intelErrorMsg'));
   } finally {
     _isFetching = false;
+    document.getElementById('intelRefreshBtn')?.classList.remove('spinning');
+    document.getElementById('intelPanel')?.classList.remove('fetching');
   }
 }
 
 // ─── Debounced trigger ────────────────────────────────────────────────────────
-function triggerFetch() {
+function triggerFetch(histIdx) {
   clearTimeout(_fetchDebounce);
-  _fetchDebounce = setTimeout(fetchIntelligence, 300);
+  _fetchDebounce = setTimeout(() => fetchIntelligence(histIdx ?? _historyIndex), 300);
 }
 
 // ─── Risk badge config ────────────────────────────────────────────────────────
@@ -159,8 +191,12 @@ function headerBarLoading() {
 function renderSkeleton() {
   headerBarLoading();
   const body = document.getElementById('intelBody');
+  const tsEl = document.getElementById('intelTimestamp');
   if (!body) return;
-  document.getElementById('intelTimestamp').textContent = t('intelAnalyzing');
+  if (tsEl) {
+    tsEl.textContent = t('intelAnalyzing');
+    tsEl.classList.add('loading-pulse');
+  }
   body.innerHTML = `
     <div class="intel-skeleton">
       <div class="skel skel-title"></div>
@@ -184,8 +220,12 @@ function renderSkeleton() {
 
 function renderError(msg) {
   const body = document.getElementById('intelBody');
+  const tsEl = document.getElementById('intelTimestamp');
   if (!body) return;
-  document.getElementById('intelTimestamp').textContent = '';
+  if (tsEl) {
+    tsEl.textContent = '';
+    tsEl.classList.remove('loading-pulse');
+  }
   body.innerHTML = `
     <div class="intel-error">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -201,6 +241,7 @@ function renderData(d) {
   const tsEl = document.getElementById('intelTimestamp');
   if (!body) return;
 
+  if (tsEl) tsEl.classList.remove('loading-pulse');
   if (tsEl && _lastFetchTime) {
     tsEl.textContent = t('intelUpdatedNow');
     startSecondsTimer();
@@ -262,14 +303,14 @@ export function openIntelPanel() {
   document.body.classList.add('intel-open');
 
   translatePanelUI();
-  triggerFetch();
+  triggerFetch(0);
 
-  // Auto-refresh every 2 minutes while open
+  // Auto-refresh latest every 3 hours while panel is open
   clearInterval(_refreshTimer);
   _refreshTimer = setInterval(() => {
-    if (_panelOpen) {
-      _cache = null;
-      triggerFetch();
+    if (_panelOpen && _historyIndex === 0) {
+      delete _historyCaches[`${lang()}:0`];
+      triggerFetch(0);
     }
   }, AUTO_REFRESH);
 }
@@ -311,8 +352,12 @@ function translatePanelUI() {
   if (refreshBtn) refreshBtn.title = t('intelRefreshTitle');
   if (closeBtn)   closeBtn.title   = t('intelCloseTitle');
 
+  // Update history nav labels
+  updateHistoryNav();
+
   // Re-render cached data in new language if available
-  if (_cache) renderData(_cache.data);
+  const cached = _historyCaches[`${lang()}:${_historyIndex}`];
+  if (cached) renderData(cached.data);
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -325,8 +370,23 @@ export function initIntelPanel() {
   backdrop?.addEventListener('click', closeIntelPanel);
 
   refreshBtn?.addEventListener('click', () => {
-    _cache = null;
-    triggerFetch();
+    _historyIndex = 0;
+    delete _historyCaches[`${lang()}:0`];
+    triggerFetch(0);
+  });
+
+  // History nav
+  document.getElementById('intelOlderBtn')?.addEventListener('click', () => {
+    if (_historyIndex < _historyTotal - 1) {
+      _historyIndex++;
+      triggerFetch(_historyIndex);
+    }
+  });
+  document.getElementById('intelNewerBtn')?.addEventListener('click', () => {
+    if (_historyIndex > 0) {
+      _historyIndex--;
+      triggerFetch(_historyIndex);
+    }
   });
 
   // Keyboard: Escape closes
@@ -336,11 +396,13 @@ export function initIntelPanel() {
 
   // Re-translate UI and re-fetch in new language on lang toggle
   onLangChange(() => {
+    _historyIndex  = 0;
+    _historyTotal  = 1;
+    _historyCaches = {};
     translatePanelUI();
     headerBarLoading();
     if (_panelOpen) {
-      _cache = null;
-      triggerFetch();
+      triggerFetch(0);
     }
   });
 
