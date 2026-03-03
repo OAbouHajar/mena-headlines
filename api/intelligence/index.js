@@ -102,7 +102,12 @@ export default async function (context, req) {
       return;
     }
 
-    const headlineText = headlines.slice(0, 25).map((h, i) => `${i + 1}. ${h}`).join('\n');
+    // For Arabic: fewer headlines + strip source names (reduce content filter surface area)
+    const limit = requestLang === 'ar' ? 12 : 25;
+    const headlineText = headlines.slice(0, limit).map((h, i) => {
+      const title = requestLang === 'ar' ? h.replace(/^\[[^\]]+\]\s*/, '') : h;
+      return `${i + 1}. ${title}`;
+    }).join('\n');
 
     const client = new AzureOpenAI({
       endpoint:   ENDPOINT,
@@ -117,7 +122,7 @@ export default async function (context, req) {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: `Analyze these live news headlines and return the JSON assessment:\n\n${headlineText}` },
       ],
-      max_completion_tokens: 1200,
+      max_completion_tokens: 2000,
     });
 
     const choice = response.choices?.[0];
