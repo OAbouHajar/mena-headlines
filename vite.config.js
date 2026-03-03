@@ -62,9 +62,162 @@ function resolveChannelPlugin() {
   };
 }
 
+/**
+ * Dev-only middleware — /api/intelligence
+ * Fetches RSS feeds server-side, then calls Azure OpenAI using the official SDK.
+ */
+function intelligencePlugin() {
+  const API_KEY     = 'REDACTED_AZURE_OPENAI_KEY';
+  const API_VERSION = '2024-12-01-preview';
+  const ENDPOINT    = 'https://aoai-inuvrovqthoi4.cognitiveservices.azure.com/';
+  const MODEL_NAME  = 'gpt-5-mini';
+  const DEPLOYMENT  = 'gpt-5-mini';
+
+  // RSS feeds — same list as ticker.js
+  const RSS_FEEDS = [
+    { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+    { name: 'BBC News',   url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+    { name: 'Sky News',   url: 'https://feeds.skynews.com/feeds/rss/world.rss' },
+  ];
+
+  const SYSTEM_PROMPT = `You are a professional global intelligence analyst. Synthesize the provided live headlines into a concise structured assessment.
+
+Rules:
+- Write like a seasoned human analyst
+- Be neutral, factual, precise
+- No emotional language or speculation without basis
+- No political bias
+
+You MUST return ONLY a valid JSON object. No text before or after. No markdown fences. No code blocks.
+Use exactly these field names:
+{
+  "situation_overview": "2-4 sentence neutral analytical summary",
+  "why_it_matters": "1-2 sentence impact analysis",
+  "key_dynamics": ["tag1", "tag2", "tag3"],
+  "risk_level": "Low",
+  "short_term_outlook": "1-2 sentence near-term projection",
+  "confidence_level": "Moderate"
+}
+risk_level must be one of: Low, Moderate, Elevated, High
+confidence_level must be one of: Low, Moderate, High`;
+
+  // Robust RSS item title extractor — split on <item> then grab <title>
+  function extractTitles(xml) {
+    const titles = [];
+    // Split into items
+    const items = xml.split(/<item[\s>]/i);
+    items.shift(); // drop content before first <item>
+    for (const item of items) {
+      // Match <title>...</title> or <title><![CDATA[...]]></title>
+      const m = item.match(/<title[^>]*>\s*(?:<!\[CDATA\[)?\s*([\s\S]*?)\s*(?:\]\]>)?\s*<\/title>/i);
+      if (m) {
+        const t = m[1]
+          .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/<[^>]+>/g, '').trim();
+        if (t && t.length > 10 && t.length < 300) titles.push(t);
+      }
+    }
+    return titles.slice(0, 10);
+  }
+
+  async function fetchHeadlines() {
+    const all = [];
+    await Promise.all(
+      RSS_FEEDS.map(async (feed) => {
+        try {
+          const r = await fetch(feed.url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+          const xml = await r.text();
+          extractTitles(xml).forEach(t => all.push(`[${feed.name}] ${t}`));
+        } catch (e) {
+          console.warn(`[intelligence] RSS fetch failed for ${feed.name}:`, e.message);
+        }
+      })
+    );
+    return all;
+  }
+
+  function extractJSON(text) {
+    // Strip markdown fences if model wraps in ```json ... ```
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/s);
+    const raw = fenced ? fenced[1].trim() : text.trim();
+    // Find the first { ... } block in the response
+    const objMatch = raw.match(/\{[\s\S]*\}/);
+    if (!objMatch) throw new Error('No JSON object found in response');
+    return JSON.parse(objMatch[0]);
+  }
+
+  return {
+    name: 'intelligence',
+    configureServer(server) {
+      server.middlewares.use('/api/intelligence', (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Method not allowed' }));
+          return;
+        }
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+          try {
+            // Fetch fresh headlines server-side from RSS
+            let headlines = await fetchHeadlines();
+            console.log(`[intelligence] RSS fetched ${headlines.length} headlines`);
+            if (headlines.length > 0) {
+              console.log('[intelligence] Sample:', headlines[0]);
+            }
+
+            // Fallback: use client-sent headlines if RSS failed
+            if (!headlines.length) {
+              try { headlines = JSON.parse(body)?.headlines || []; } catch {}
+            }
+
+            if (!headlines.length) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'No headlines available' }));
+              return;
+            }
+
+            const headlineText = headlines.slice(0, 25).map((h, i) => `${i + 1}. ${h}`).join('\n');
+
+            const { AzureOpenAI } = await import('openai');
+            const client = new AzureOpenAI({
+              endpoint:   ENDPOINT,
+              apiKey:     API_KEY,
+              deployment: DEPLOYMENT,
+              apiVersion: API_VERSION,
+            });
+
+            const response = await client.chat.completions.create({
+              model: MODEL_NAME,
+              messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.` },
+              ],
+              max_completion_tokens: 1200,
+            });
+
+            const content = response.choices?.[0]?.message?.content || '';
+            console.log('[intelligence] Raw AI response:', content.slice(0, 300));
+
+            const result = extractJSON(content);
+            console.log('[intelligence] Parsed keys:', Object.keys(result));
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+          } catch (err) {
+            console.error('[intelligence dev]', err.message);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
   root: '.',
-  plugins: [resolveChannelPlugin()],
+  plugins: [resolveChannelPlugin(), intelligencePlugin()],
   build: {
     outDir: 'dist',
     emptyOutDir: true,
