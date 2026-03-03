@@ -202,13 +202,13 @@ confidence_level must be one of: Low, Moderate, High`;
   return {
     name: 'intelligence',
     configureServer(server) {
-      // Pre-warm both langs on startup (staggered so server is ready)
+      // Pre-warm both langs immediately when server is ready
       const prewarm = () => {
         for (const l of ['en', 'ar']) {
           runAnalysis(l).catch(e => console.warn(`[intelligence] Pre-warm failed (${l}):`, e.message));
         }
       };
-      setTimeout(prewarm, 3000);
+      prewarm(); // start immediately
 
       // Background refresh every 30 minutes — independent of any client request
       setInterval(prewarm, CACHE_TTL_MS);
