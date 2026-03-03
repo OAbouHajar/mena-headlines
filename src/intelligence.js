@@ -97,6 +97,16 @@ function riskConfig(level = '') {
   return { cls: entry.cls, label: t(entry.labelKey) };
 }
 
+function confidenceLabel(level = '') {
+  const map = {
+    low:      'intelConfLow',
+    moderate: 'intelConfModerate',
+    high:     'intelConfHigh',
+  };
+  const key = map[(level || '').toLowerCase()];
+  return key ? t(key) : (level || '—');
+}
+
 // ─── Seconds-ago label ────────────────────────────────────────────────────────
 function startSecondsTimer() {
   clearInterval(_secondsTimer);
@@ -141,7 +151,7 @@ function headerBarLoading() {
   if (!bar) return;
   bar.classList.add('loading');
   text.classList.remove('marquee');
-  text.textContent = '•••';
+  text.textContent = t('intelHeaderLoading');
   if (dot) dot.className = 'header-intel-dot';
   if (riskEl) { riskEl.className = 'header-intel-risk'; riskEl.textContent = ''; }
 }
@@ -224,7 +234,7 @@ function renderData(d) {
       </div>
       <div>
         <h4 class="intel-section-label">${t('intelConfidence')}</h4>
-        <span class="intel-confidence">${esc(d.confidence_level || '—')}</span>
+        <span class="intel-confidence">${esc(confidenceLabel(d.confidence_level))}</span>
       </div>
     </section>
 
@@ -340,8 +350,9 @@ export function initIntelPanel() {
   // Wire header bar click → open panel
   document.getElementById('headerIntelBar')?.addEventListener('click', openIntelPanel);
 
-  // Background fetch on startup to populate header bar (server cache likely warm)
-  setTimeout(() => {
-    if (!_cache) fetchIntelligence();
-  }, 4000);
+  // Show loading state immediately so the bar is never empty
+  headerBarLoading();
+
+  // Fetch immediately — server cache is likely warm, so this is fast
+  fetchIntelligence();
 }

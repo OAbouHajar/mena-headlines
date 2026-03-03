@@ -80,6 +80,10 @@ const translations = {
     intelRiskModerate: 'Moderate',
     intelRiskElevated: 'Elevated',
     intelRiskHigh: 'High',
+    intelConfLow: 'Low',
+    intelConfModerate: 'Moderate',
+    intelConfHigh: 'High',
+    intelHeaderLoading: 'Analyzing latest news with AI…',
   },
   ar: {
     appTitle: 'منصة الاستخبارات المباشرة',
@@ -137,7 +141,7 @@ const translations = {
     intelRefreshTitle: 'تحديث التحليل',
     intelCloseTitle: 'إغلاق (Esc)',
     intelSituationOverview: 'نظرة عامة على الوضع',
-    intelWhyItMatters: 'لماذا يهمّ',
+    intelWhyItMatters: 'شو المهم',
     intelKeyDynamics: 'الديناميات الرئيسية',
     intelConfidence: 'مستوى الثقة',
     intelRiskLevel: 'مستوى المخاطر',
@@ -151,10 +155,14 @@ const translations = {
     intelRiskModerate: 'متوسط',
     intelRiskElevated: 'مرتفع',
     intelRiskHigh: 'خطر',
+    intelConfLow: 'منخفضة',
+    intelConfModerate: 'متوسطة',
+    intelConfHigh: 'عالية',
+    intelHeaderLoading: 'جاري تحليل الاخبار باستخدام الذكاء الاصطناعي',
   },
 };
 
-let currentLang = localStorage.getItem(STORAGE_KEY) || 'en';
+let currentLang = localStorage.getItem(STORAGE_KEY) || 'ar';
 const listeners = [];
 
 /** Get a translation value by key */
