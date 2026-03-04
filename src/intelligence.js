@@ -44,19 +44,19 @@ function historyLabel(index) {
 }
 
 function updateHistoryNav() {
-  const nav      = document.getElementById('intelHistoryNav');
-  const label    = document.getElementById('intelHistoryLabel');
-  const olderBtn = document.getElementById('intelOlderBtn');
-  const newerBtn = document.getElementById('intelNewerBtn');
+  const nav = document.getElementById('intelHistoryNav');
   if (!nav) return;
 
-  // Always show nav so users see the time context
-  nav.style.display = 'flex';
-  if (label)    label.textContent = historyLabel(_historyIndex);
-  if (olderBtn) olderBtn.disabled = _historyIndex >= _historyTotal - 1;
-  if (newerBtn) newerBtn.disabled = _historyIndex <= 0;
-  if (olderBtn) olderBtn.title    = t('intelOlderTitle');
-  if (newerBtn) newerBtn.title    = t('intelNewerTitle');
+  const dots = Array.from({ length: _historyTotal }, (_, i) => {
+    const active = i === _historyIndex;
+    const label  = i === 0 ? t('intelNow') : t('intelHoursAgo', i * 3);
+    return `<button class="tl-dot${active ? ' tl-dot--active' : ''}" data-hist="${i}" title="${label}">
+      <span class="tl-pip"></span>
+      <span class="tl-label">${label}</span>
+    </button>`;
+  });
+
+  nav.innerHTML = `<div class="tl-track">${dots.join('')}</div>`;
 }
 
 // ─── Fetch from /api/intelligence ─────────────────────────────────────────────
@@ -375,18 +375,15 @@ export function initIntelPanel() {
     triggerFetch(0);
   });
 
-  // History nav
-  document.getElementById('intelOlderBtn')?.addEventListener('click', () => {
-    if (_historyIndex < _historyTotal - 1) {
-      _historyIndex++;
-      triggerFetch(_historyIndex);
-    }
-  });
-  document.getElementById('intelNewerBtn')?.addEventListener('click', () => {
-    if (_historyIndex > 0) {
-      _historyIndex--;
-      triggerFetch(_historyIndex);
-    }
+  // History timeline — event delegation on the container
+  document.getElementById('intelHistoryNav')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tl-dot');
+    if (!btn || _isFetching) return;
+    const idx = parseInt(btn.dataset.hist, 10);
+    if (isNaN(idx) || idx === _historyIndex) return;
+    _historyIndex = idx;
+    updateHistoryNav();
+    triggerFetch(idx);
   });
 
   // Keyboard: Escape closes
