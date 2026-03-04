@@ -20,10 +20,12 @@ const BLOB_CONTAINER = 'intel-cache';
 const CACHE_TTL_MS   = 3 * 60 * 60 * 1000; // 3 hours
 const MAX_HISTORY    = 4;                    // keep 4 reports = 12h history
 
+// Politics & geopolitics feeds only
 const RSS_FEEDS_EN = [
-  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
-  { name: 'BBC News',   url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
-  { name: 'Sky News',   url: 'https://feeds.skynews.com/feeds/rss/world.rss' },
+  { name: 'Al Jazeera',        url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+  { name: 'BBC Politics',      url: 'https://feeds.bbci.co.uk/news/politics/rss.xml' },
+  { name: 'BBC World',         url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { name: 'Sky News Politics', url: 'https://feeds.skynews.com/feeds/rss/politics.rss' },
 ];
 
 const RSS_FEEDS_AR = [
@@ -32,7 +34,12 @@ const RSS_FEEDS_AR = [
   { name: 'العربية',   url: 'https://www.alarabiya.net/feed/last-page' },
 ];
 
-const SYSTEM_PROMPT = `You are a sharp, well-informed person who follows global news closely. You speak directly and plainly — like someone explaining the situation to a smart friend, not writing a corporate report.
+const SYSTEM_PROMPT = `You are a sharp political analyst who tracks global politics and geopolitics closely. You speak directly and plainly — like someone explaining the situation to a smart friend, not writing a corporate report.
+
+Scope rules (CRITICAL):
+- ONLY analyze political, geopolitical, diplomatic, military, and government news
+- IGNORE any headlines about: sports, football, entertainment, celebrity, drama, lifestyle, health, science, technology, business/markets (unless directly driven by a political decision like sanctions or war)
+- If a headline is not clearly political, skip it entirely
 
 Tone rules:
 - Sound human, conversational, and grounded — not stiff or bureaucratic
@@ -44,7 +51,7 @@ Tone rules:
 
 Return ONLY a raw JSON object (no markdown fences) with exactly these keys:
 {
-  "situation_overview": "2-4 sentences: what's going on right now, stated plainly",
+  "situation_overview": "2-4 sentences: what's going on politically right now, stated plainly",
   "why_it_matters": "1-2 sentences: why this actually matters to people",
   "key_dynamics": ["short tag", "short tag", "short tag", "short tag", "short tag"],
   "risk_level": "Low" or "Moderate" or "Elevated" or "High",
