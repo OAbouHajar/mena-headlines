@@ -170,6 +170,61 @@ h1, h2, h3, h4, h5, h6 {
     flex-shrink: 0;
 }
 
+/* ---- Header Price Bar ---- */
+.header-price-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    align-self: stretch;
+    border-left: 1px solid var(--border-light);
+    border-right: 1px solid var(--border-light);
+}
+.header-price-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 14px;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    height: 100%;
+}
+.header-price-divider {
+    width: 1px;
+    height: 60%;
+    background: var(--border-light);
+    flex-shrink: 0;
+}
+.hpc-label {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #6c7a8a);
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+.hpc-price {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary, #e0e8f0);
+    flex-shrink: 0;
+}
+.hpc-change {
+    font-size: 14.5px;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+.hpc-change.up   { color: #4caf7d; }
+.hpc-change.down { color: #c94040; }
+
+@media (max-width: 900px) {
+    .header-price-bar { display: none; }
+}
+
 /* ============ Buttons ============ */
 .btn {
     padding: 6px 13px;
@@ -1526,24 +1581,7 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 body.intel-open { overflow: hidden; }
 
 /* ─── Header AI Summary Bar ─────────────────────────────────────────────────── */
-.header-intel-bar {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0 18px;
-    cursor: pointer;
-    overflow: hidden;
-    border-left: 1px solid var(--border-light);
-    border-right: 1px solid var(--border-light);
-    align-self: stretch;
-    transition: background 0.2s;
-    position: relative;
-}
-.header-intel-bar:hover {
-    background: rgba(78,122,160,0.05);
-}
+.header-intel-bar { display: none !important; }
 
 /* Pulsing risk dot */
 .header-intel-dot {
@@ -1628,5 +1666,256 @@ body.intel-open { overflow: hidden; }
 .header-intel-risk.risk-moderate { color: #e8a838; background: rgba(232,168,56,0.1);  border: 1px solid rgba(232,168,56,0.25); }
 .header-intel-risk.risk-elevated { color: #e07b39; background: rgba(224,123,57,0.1);  border: 1px solid rgba(224,123,57,0.25); }
 .header-intel-risk.risk-high     { color: #c94040; background: rgba(201,64,64,0.1);   border: 1px solid rgba(201,64,64,0.25); }
+
+/* ==========================================================================
+   Stats Panel
+   ========================================================================== */
+
+/* Body scrollable area */
+.stats-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 12px 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* ---- Global Tension Score ---- */
+.tension-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 8px);
+    padding: 14px 14px 12px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+}
+.tension-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    background: var(--tension-color, transparent);
+    pointer-events: none;
+}
+.tension-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.tension-score {
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--tension-color, var(--text-primary, #e0e8f0));
+    letter-spacing: -2px;
+}
+.tension-right {
+    text-align: right;
+}
+.tension-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--tension-color, var(--text-primary, #e0e8f0));
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.tension-sublabel {
+    font-size: 10px;
+    color: var(--text-muted, #6c7a8a);
+    margin-top: 3px;
+}
+.tension-bar-track {
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+.tension-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--tension-color, var(--accent));
+    transition: width 0.6s ease;
+}
+.tension-breakdown {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.tension-pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.tension-pill-red    { background: rgba(201,64,64,0.15);   color: #c94040; }
+.tension-pill-orange { background: rgba(232,168,56,0.15);  color: #e8a838; }
+.tension-pill-green  { background: rgba(76,175,80,0.15);   color: #4caf7d; }
+.tension-note {
+    font-size: 9.5px;
+    color: var(--text-muted, #6c7a8a);
+    margin-top: 8px;
+    opacity: 0.75;
+}
+
+/* Section grouping */
+.stats-section {
+    margin-bottom: 16px;
+}
+
+.stats-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted, #6c7a8a);
+    margin-bottom: 8px;
+}
+
+/* Price / hero cards row */
+.stats-cards-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.stat-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 8px);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.stat-card-label {
+    font-size: 10px;
+    color: var(--text-muted, #6c7a8a);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-price {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary, #e0e8f0);
+    white-space: nowrap;
+}
+
+.stat-price.stat-unavailable { color: var(--text-muted, #6c7a8a); }
+
+.stat-unit {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text-muted, #6c7a8a);
+}
+
+.stat-change {
+    font-size: 11px;
+    font-weight: 500;
+}
+.stat-change.up   { color: #4caf7d; }
+.stat-change.down { color: #c94040; }
+
+/* Hero cards (conflict numbers) */
+.stat-card-hero {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 12px 8px;
+}
+
+.stat-hero-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary, #e0e8f0);
+    line-height: 1;
+}
+
+/* Alert list */
+.alert-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 7px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 11.5px;
+}
+.alert-item:last-child { border-bottom: none; }
+
+.alert-badge {
+    flex-shrink: 0;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+.alert-badge-green  { background: rgba(76,175,80,0.12);  color: #4caf7d; border: 1px solid rgba(76,175,80,0.25); }
+.alert-badge-orange { background: rgba(232,168,56,0.12); color: #e8a838; border: 1px solid rgba(232,168,56,0.25); }
+.alert-badge-red    { background: rgba(201,64,64,0.12);  color: #c94040; border: 1px solid rgba(201,64,64,0.25); }
+
+.alert-text {
+    flex: 1;
+    color: var(--text-primary, #e0e8f0);
+    line-height: 1.35;
+    min-width: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.alert-date {
+    flex-shrink: 0;
+    font-size: 10px;
+    color: var(--text-muted, #6c7a8a);
+}
+
+/* Utility states */
+.stats-loading,
+.stats-empty,
+.stats-error {
+    padding: 20px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted, #6c7a8a);
+}
+.stats-error { color: #c94040; }
+
+.stats-acled-note {
+    font-size: 10px;
+    color: var(--text-muted, #6c7a8a);
+    margin: 4px 0 0;
+    text-align: center;
+}
+
+/* Skeleton shimmer */
+.stats-skeleton {
+    background: linear-gradient(90deg,
+        rgba(255,255,255,0.06) 25%,
+        rgba(255,255,255,0.10) 50%,
+        rgba(255,255,255,0.06) 75%
+    );
+    background-size: 200% 100%;
+    animation: statsShimmer 1.4s infinite;
+    border-radius: var(--radius, 8px);
+}
+@keyframes statsShimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+
 
 

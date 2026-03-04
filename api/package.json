@@ -4,7 +4,8 @@
   "description": "Azure Functions API",
   "private": true,
   "dependencies": {
+    "@azure/storage-blob": "^12.26.0",
     "openai": "^6.25.0",
-    "@azure/storage-blob": "^12.26.0"
+    "xml2js": "^0.6.2"
   }
 }

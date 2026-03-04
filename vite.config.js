@@ -264,9 +264,154 @@ confidence_level must be one of: Low, Moderate, High`;
   };
 }
 
+// ---------------------------------------------------------------------------
+// Stats Plugin — dev-only mirror of /api/stats Azure Function
+// ---------------------------------------------------------------------------
+function statsPlugin() {
+  let statsCache = null;
+  let statsCacheTime = 0;
+  const STATS_CACHE_TTL = 10 * 60 * 1000;
+
+  async function fetchYahooFinance(symbol) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2d`;
+      const resp = await fetch(url, { headers: { 'User-Agent': 'yt-multi-player/1.0' } });
+      const json = await resp.json();
+      const result = json?.chart?.result?.[0];
+      if (!result) return null;
+      const meta = result.meta;
+      const price = meta.regularMarketPrice;
+      const prev = meta.previousClose ?? meta.chartPreviousClose;
+      const change = price - prev;
+      const changePct = (change / prev) * 100;
+      return {
+        price: +price.toFixed(2),
+        change: +change.toFixed(2),
+        changePct: +changePct.toFixed(2),
+        currency: meta.currency,
+      };
+    } catch { return null; }
+  }
+
+  async function fetchGDACS() {
+    try {
+      const resp = await fetch('https://www.gdacs.org/xml/rss_6m.xml', {
+        headers: { 'User-Agent': 'yt-multi-player/1.0' },
+      });
+      const xml = await resp.text();
+      // Simple regex-based item extractor
+      const items = [];
+      const itemRe = /<item>([\s\S]*?)<\/item>/g;
+      let m;
+      while ((m = itemRe.exec(xml)) !== null && items.length < 10) {
+        const block = m[1];
+        const get = (tag) => { const r = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([^<]*)<\\/${tag}>`); const x = r.exec(block); return x ? (x[1] ?? x[2] ?? '').trim() : ''; };
+        const getAttr = (tag, attr) => { const r = new RegExp(`<${tag}[^>]*${attr}="([^"]*)`); const x = r.exec(block); return x ? x[1] : ''; };
+        items.push({
+          title: get('title'),
+          link: get('link'),
+          pubDate: get('pubDate'),
+          level: (get('gdacs:alertlevel') || getAttr('gdacs:alertlevel', 'value') || 'green').toLowerCase(),
+          country: get('gdacs:country'),
+          eventType: get('gdacs:eventtype'),
+          severity: get('gdacs:severity'),
+        });
+      }
+      return items;
+    } catch { return []; }
+  }
+
+  // OAuth token cache (valid 24h, reuse across requests)
+  let acledToken = null;
+  let acledTokenExpiry = 0;
+
+  async function getACLEDToken() {
+    if (acledToken && Date.now() < acledTokenExpiry) return acledToken;
+    const email    = process.env.ACLED_EMAIL;
+    const password = process.env.ACLED_PASSWORD;
+    if (!email || !password || email === 'your@email.com') return null;
+    const body = new URLSearchParams({
+      username: email, password, grant_type: 'password', client_id: 'acled',
+    });
+    const resp = await fetch('https://acleddata.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+    if (!resp.ok) throw new Error(`ACLED token error ${resp.status}`);
+    const json = await resp.json();
+    acledToken = json.access_token;
+    acledTokenExpiry = Date.now() + (json.expires_in - 300) * 1000; // 5-min buffer
+    return acledToken;
+  }
+
+  async function fetchACLED() {
+    try {
+      const token = await getACLEDToken();
+      if (!token) return { available: false, events: 0, fatalities: 0 };
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const sinceStr = since.toISOString().slice(0, 10);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const url = `https://acleddata.com/api/acled/read?_format=json&event_date=${sinceStr}|${todayStr}&event_date_where=BETWEEN&fields=fatalities&limit=500`;
+      const resp = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const json = await resp.json();
+      const rows = json?.data ?? [];
+      const fatalities = rows.reduce((sum, d) => sum + (parseInt(d.fatalities) || 0), 0);
+      const count = json?.count ?? rows.length;
+      return { available: true, events: Number(count), fatalities };
+    } catch (e) {
+      console.warn('[stats] ACLED fetch failed:', e.message);
+      return { available: false, events: 0, fatalities: 0 };
+    }
+  }
+
+  async function buildStats() {
+    const [oil, gold, brent, natgas, alerts, acled] = await Promise.all([
+      fetchYahooFinance('CL=F'),
+      fetchYahooFinance('GC=F'),
+      fetchYahooFinance('BZ=F'),
+      fetchYahooFinance('NG=F'),
+      fetchGDACS(),
+      fetchACLED(),
+    ]);
+    return {
+      ts: new Date().toISOString(),
+      prices: { oil, gold, brent, natgas },
+      alerts,
+      conflicts: acled,
+    };
+  }
+
+  return {
+    name: 'stats',
+    configureServer(server) {
+      server.middlewares.use('/api/stats', async (req, res) => {
+        if (req.method !== 'GET') {
+          res.writeHead(405); res.end(); return;
+        }
+        try {
+          const now = Date.now();
+          if (!statsCache || now - statsCacheTime > STATS_CACHE_TTL) {
+            statsCache = await buildStats();
+            statsCacheTime = now;
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(statsCache));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig({
   root: '.',
-  plugins: [resolveChannelPlugin(), intelligencePlugin()],
+  plugins: [resolveChannelPlugin(), intelligencePlugin(), statsPlugin()],
   build: {
     outDir: 'dist',
     emptyOutDir: true,
