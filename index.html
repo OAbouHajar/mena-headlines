@@ -37,13 +37,31 @@
             <h1 data-i18n="appTitle">Multi-Channel Live Viewer</h1>
         </div>
 
-        <!-- AI Summary Bar -->
-        <div class="header-intel-bar" id="headerIntelBar" title="Open AI Analysis">
-            <span class="header-intel-dot" id="headerIntelDot"></span>
-            <div class="header-intel-scroll">
-                <span class="header-intel-text" id="headerIntelText"></span>
+        <!-- Live Price Bar -->
+        <div class="header-price-bar" id="headerPriceBar">
+            <div class="header-price-chip" id="headerOil">
+                <span class="hpc-label">🛢 WTI</span>
+                <span class="hpc-price">—</span>
+                <span class="hpc-change"></span>
             </div>
-            <span class="header-intel-risk" id="headerIntelRisk"></span>
+            <div class="header-price-divider"></div>
+            <div class="header-price-chip" id="headerGold">
+                <span class="hpc-label">🥇 Gold</span>
+                <span class="hpc-price">—</span>
+                <span class="hpc-change"></span>
+            </div>
+            <div class="header-price-divider"></div>
+            <div class="header-price-chip" id="headerBrent">
+                <span class="hpc-label">⛽ Brent</span>
+                <span class="hpc-price">—</span>
+                <span class="hpc-change"></span>
+            </div>
+            <div class="header-price-divider"></div>
+            <div class="header-price-chip" id="headerNatgas">
+                <span class="hpc-label">🔥 NatGas</span>
+                <span class="hpc-price">—</span>
+                <span class="hpc-change"></span>
+            </div>
         </div>
 
         <div class="header-controls">
@@ -99,6 +117,7 @@
             <div class="sidebar-tabs">
                 <button class="sidebar-tab active" data-tab="channels" id="tabChannels" data-i18n="channels">Channels</button>
                 <button class="sidebar-tab" data-tab="updates" id="tabUpdates" data-i18n="updates">Updates</button>
+                <button class="sidebar-tab" data-tab="stats" id="tabStats" data-i18n="stats">Stats</button>
             </div>
 
             <!-- Channels Panel -->
@@ -125,6 +144,16 @@
                 </div>
                 <div class="updates-feed" id="updatesFeed">
                     <div class="update-empty" id="updatesEmpty" data-i18n="updatesEmpty">Headlines will appear here as the ticker loads.</div>
+                </div>
+            </div>
+
+            <!-- Stats Panel -->
+            <div class="sidebar-panel" id="panelStats">
+                <div class="sidebar-header">
+                    <h3 data-i18n="stats">Stats</h3>
+                </div>
+                <div class="stats-body" id="statsBody">
+                    <div class="stats-loading" data-i18n="statsLoading">Loading data…</div>
                 </div>
             </div>
         </aside>

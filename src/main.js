@@ -4,6 +4,7 @@ import { signInWithGoogle, signOutUser } from './firebase.js';
 import { onAuthReady } from './sync.js';
 import { NewsTicker } from './ticker.js';
 import { initIntelPanel, openIntelPanel, closeIntelPanel } from './intelligence.js';
+import { initStatsPanel } from './stats.js';
 
 // ============ DOM References ============
 const $ = (sel) => document.querySelector(sel);
@@ -603,6 +604,7 @@ translateStatic();
 render();
 new NewsTicker();
 initIntelPanel();
+initStatsPanel();
 // ============ Global Keyboard Shortcuts ============
 document.addEventListener('keydown', (e) => {
   // Ignore inputs and textareas
