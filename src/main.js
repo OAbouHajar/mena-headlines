@@ -92,7 +92,7 @@ function initials(name) {
 
 function embedUrl(channelId) {
   if (!channelId || !channelId.startsWith('UC')) return null;
-  return `https://www.youtube.com/embed/live_stream?channel=${channelId}`;
+  return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&mute=1`;
 }
 
 function channelPageUrl(handle) {
