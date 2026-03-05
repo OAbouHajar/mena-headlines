@@ -252,6 +252,46 @@ function renderData(d) {
     ? d.key_dynamics.map(tag => `<span class="intel-tag">${esc(tag)}</span>`).join('')
     : '';
 
+  // Build market + flight snapshot block if available
+  const snap = d._snapshot || {};
+  const mkt  = snap.market || {};
+  const flt  = snap.flights || null;
+
+  function fmtPrice(p) {
+    if (!p) return '<span class="intel-price-na">—</span>';
+    const dir   = p.changePct >= 0 ? 'up' : 'down';
+    const arrow = p.changePct >= 0 ? '▲' : '▼';
+    const sign  = p.changePct >= 0 ? '+' : '';
+    return `<span class="intel-price-val">$${p.price.toLocaleString()}</span> <span class="intel-price-chg intel-price-chg--${dir}">${arrow}${sign}${p.changePct.toFixed(2)}%</span>`;
+  }
+
+  const marketRows = [
+    { label: '🛢 WTI',    data: mkt.oil   },
+    { label: '⛽ Brent',  data: mkt.brent },
+    { label: '🥇 Gold',   data: mkt.gold  },
+  ].map(r => `
+    <div class="intel-mkt-row">
+      <span class="intel-mkt-label">${r.label}</span>
+      <span class="intel-mkt-price">${fmtPrice(r.data)}</span>
+    </div>`).join('');
+
+  const flightStr = flt
+    ? `<div class="intel-flt-total">✈️ ${flt.total} ${t('intelFlightsActive')}</div>` +
+      (flt.byCountry && flt.byCountry.length
+        ? `<div class="intel-flt-countries">${
+            flt.byCountry.slice(0, 6).map(c =>
+              `<span class="intel-flt-chip">${c.name} <strong>${c.n}</strong></span>`
+            ).join('')
+          }</div>`
+        : '')
+    : '';
+
+  const marketPulseSection = d.market_pulse ? `
+    <section class="intel-section">
+      <h4 class="intel-section-label">${t('intelMarketPulse')}</h4>
+      <p class="intel-text intel-text-muted">${esc(d.market_pulse)}</p>
+    </section>` : '';
+
   body.innerHTML = `
     <section class="intel-section">
       <h4 class="intel-section-label">${t('intelSituationOverview')}</h4>
@@ -282,7 +322,16 @@ function renderData(d) {
     <section class="intel-section">
       <h4 class="intel-section-label">${t('intelOutlook')}</h4>
       <p class="intel-text">${esc(d.short_term_outlook || '—')}</p>
-    </section>`;
+    </section>
+
+    ${(mkt.oil || mkt.gold || mkt.brent || flt) ? `
+    <section class="intel-section intel-market-section">
+      <h4 class="intel-section-label">${t('intelMarketData')}</h4>
+      <div class="intel-mkt-grid">${marketRows}</div>
+      ${flightStr}
+    </section>` : ''}
+
+    ${marketPulseSection}`;
 }
 
 function esc(str) {

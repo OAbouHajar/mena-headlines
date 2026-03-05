@@ -1628,6 +1628,74 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     gap: 12px;
 }
 
+/* ─── Market & Airspace Section ───────────────── */
+.intel-market-section {
+    background: rgba(78,168,222,0.06);
+    border: 1px solid rgba(78,168,222,0.14);
+    border-radius: 8px;
+    padding: 14px 16px !important;
+    margin: 0 -2px;
+}
+.intel-mkt-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.intel-mkt-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12.5px;
+}
+.intel-mkt-label {
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+.intel-mkt-price {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.intel-price-val {
+    color: #e2ddd6;
+    font-weight: 600;
+    font-size: 13px;
+}
+.intel-price-na { color: var(--text-muted); }
+.intel-price-chg { font-size: 11.5px; font-weight: 600; }
+.intel-price-chg--up   { color: #4caf7d; }
+.intel-price-chg--down { color: #c94040; }
+.intel-flt-total {
+    font-size: 12px;
+    color: #4ea8de;
+    font-weight: 600;
+    padding-top: 6px;
+    border-top: 1px solid rgba(78,168,222,0.15);
+    margin-top: 4px;
+}
+.intel-flt-countries {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 7px;
+}
+.intel-flt-chip {
+    font-size: 11px;
+    padding: 3px 8px;
+    background: rgba(78,168,222,0.10);
+    border: 1px solid rgba(78,168,222,0.22);
+    border-radius: 4px;
+    color: #a8d8f0;
+}
+.intel-flt-chip strong {
+    color: #e2ddd6;
+    font-weight: 700;
+    margin-left: 3px;
+}
+[dir="rtl"] .intel-flt-chip strong { margin-left: 0; margin-right: 3px; }
+
 .intel-section-label {
     font-size: 11.5px;
     font-weight: 700;
