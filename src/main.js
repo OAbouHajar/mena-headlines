@@ -593,6 +593,55 @@ authDropdown.addEventListener('click', async (e) => {
   }
 });
 
+// ============ Contributor Popup ============
+(function () {
+  const contributorArea = $('#contributorArea');
+  const contributorBtn = $('#contributorBtn');
+  const contributorDropdown = $('#contributorDropdown');
+  const contributorList = $('#contributorList');
+  let _contributorsLoaded = false;
+
+  async function loadContributors() {
+    if (_contributorsLoaded) return;
+    contributorList.innerHTML = `<div class="contributor-loading">Loading…</div>`;
+    try {
+      const res = await fetch('https://api.github.com/repos/OAbouHajar/mena-headlines/contributors?per_page=30');
+      if (!res.ok) throw new Error(res.statusText);
+      const contributors = await res.json();
+      contributorList.innerHTML = contributors.map(c => `
+        <a class="contributor-item" href="${c.html_url}" target="_blank" rel="noopener">
+          <img class="contributor-avatar" src="${c.avatar_url}&s=64" alt="${c.login}" loading="lazy">
+          <div class="contributor-info">
+            <span class="contributor-name">${c.login}</span>
+            <span class="contributor-commits">${t('nContributions', c.contributions)}</span>
+          </div>
+        </a>
+      `).join('');
+      _contributorsLoaded = true;
+    } catch (err) {
+      contributorList.innerHTML = `<div class="contributor-error">${t('contributorLoadError')}</div>`;
+    }
+  }
+
+  contributorBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = contributorDropdown.classList.toggle('visible');
+    if (isOpen) loadContributors();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!contributorArea.contains(e.target)) {
+      contributorDropdown.classList.remove('visible');
+    }
+  });
+
+  // Re-render contribution counts on lang change
+  onLangChange(() => {
+    _contributorsLoaded = false;
+    if (contributorDropdown.classList.contains('visible')) loadContributors();
+  });
+})();
+
 // ============ Subscribe & Boot ============
 store.subscribe(render);
 onLangChange(() => {

@@ -188,7 +188,7 @@ function _fillFlightSlide(el, item) {
   const labelEl  = el.querySelector('.hpc-label');
   const priceEl  = el.querySelector('.hpc-price');
   const changeEl = el.querySelector('.hpc-change');
-  if (labelEl)  labelEl.textContent = item.label;
+  if (labelEl)  labelEl.textContent = `✈️ ${t(item.labelKey)}`;
   const val = _flightData[item.id];
   if (priceEl)  priceEl.textContent = val != null ? val.toLocaleString() : '—';
   if (changeEl) { changeEl.textContent = item.unit || ''; changeEl.className = 'hpc-change'; }
