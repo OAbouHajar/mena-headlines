@@ -4,7 +4,7 @@ import { signInWithGoogle, signOutUser } from './firebase.js';
 import { onAuthReady } from './sync.js';
 import { NewsTicker } from './ticker.js';
 import { initIntelPanel, openIntelPanel, closeIntelPanel } from './intelligence.js';
-import { initStatsPanel } from './stats.js';
+import { initStatsPanel, toggleStatsPanel, toggleFlightPanel } from './stats.js';
 
 // ============ DOM References ============
 const $ = (sel) => document.querySelector(sel);
@@ -439,6 +439,8 @@ videoGrid.addEventListener('click', (e) => {
 
 // Header buttons
 $('#toggleSidebarBtn').addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+$('#statsBtn').addEventListener('click', () => toggleStatsPanel());
+$('#flightBtn').addEventListener('click', () => toggleFlightPanel());
 $('#addChannelBtn').addEventListener('click', () => openModal());
 $('#intelBtn').addEventListener('click', () => openIntelPanel());
 $('#theatreBtn').addEventListener('click', () => document.body.classList.toggle('theatre'));
@@ -493,6 +495,8 @@ document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   switch (e.key.toLowerCase()) {
     case 's': sidebar.classList.toggle('collapsed'); break;
+    case 'd': toggleStatsPanel(); break;
+    case 'f': toggleFlightPanel(); break;
     case 't': document.body.classList.toggle('theatre'); break;
     case 'r': $('#refreshBtn').click(); break;
     case 'escape':

@@ -6,6 +6,9 @@
     <title>Live Intelligence Platform</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23111110'/><rect x='4' y='10' width='16' height='2' rx='1' fill='%234e7aa0'/><rect x='4' y='15' width='20' height='2' rx='1' fill='%234e7aa0' opacity='.65'/><rect x='4' y='20' width='12' height='2' rx='1' fill='%234e7aa0' opacity='.4'/><circle cx='26' cy='10' r='3' fill='%23b83030'/></svg>">
     <link rel="stylesheet" href="/src/styles.css">
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9893338884955073"
@@ -37,35 +40,45 @@
             <h1 data-i18n="appTitle">Multi-Channel Live Viewer</h1>
         </div>
 
-        <!-- Live Price Bar -->
+        <!-- Live Price Ticker -->
         <div class="header-price-bar" id="headerPriceBar">
-            <div class="header-price-chip" id="headerOil">
-                <span class="hpc-label">🛢 WTI</span>
-                <span class="hpc-price">—</span>
-                <span class="hpc-change"></span>
+            <div class="header-price-ticker" id="headerPriceTicker">
+                <div class="hpc-slide" id="hpcSlideA">
+                    <span class="hpc-label">🛢 WTI</span>
+                    <span class="hpc-price">—</span>
+                    <span class="hpc-change"></span>
+                </div>
+                <div class="hpc-slide hpc-below" id="hpcSlideB">
+                    <span class="hpc-label">🥇 Gold</span>
+                    <span class="hpc-price">—</span>
+                    <span class="hpc-change"></span>
+                </div>
             </div>
-            <div class="header-price-divider"></div>
-            <div class="header-price-chip" id="headerGold">
-                <span class="hpc-label">🥇 Gold</span>
-                <span class="hpc-price">—</span>
-                <span class="hpc-change"></span>
-            </div>
-            <div class="header-price-divider"></div>
-            <div class="header-price-chip" id="headerBrent">
-                <span class="hpc-label">⛽ Brent</span>
-                <span class="hpc-price">—</span>
-                <span class="hpc-change"></span>
-            </div>
-            <div class="header-price-divider"></div>
-            <div class="header-price-chip" id="headerNatgas">
-                <span class="hpc-label">🔥 NatGas</span>
-                <span class="hpc-price">—</span>
-                <span class="hpc-change"></span>
+            <div class="header-ticker-divider"></div>
+            <div class="header-flight-ticker" id="headerFlightTicker">
+                <div class="hpc-slide" id="hfcSlideA">
+                    <span class="hpc-label">✈️ رحلات</span>
+                    <span class="hpc-price">—</span>
+                    <span class="hpc-change"></span>
+                </div>
+                <div class="hpc-slide hpc-below" id="hfcSlideB">
+                    <span class="hpc-label">✈️ رحلات</span>
+                    <span class="hpc-price">—</span>
+                    <span class="hpc-change"></span>
+                </div>
             </div>
         </div>
 
         <div class="header-controls">
             <div class="layout-group" id="layoutGroup"></div>
+            <button class="btn btn-flight" id="flightBtn" aria-label="Flight Radar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                <span data-i18n="flightBtn">رادار جوي</span>
+            </button>
+            <button class="btn btn-stats active" id="statsBtn" aria-label="Statistics">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <span data-i18n="statsBtn">إحصاءات</span>
+            </button>
             <button class="btn btn-intel" id="intelBtn" aria-label="AI Intelligence">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                   <!-- Brain outline left lobe -->
@@ -117,7 +130,6 @@
             <div class="sidebar-tabs">
                 <button class="sidebar-tab active" data-tab="channels" id="tabChannels" data-i18n="channels">Channels</button>
                 <button class="sidebar-tab" data-tab="updates" id="tabUpdates" data-i18n="updates">Updates</button>
-                <button class="sidebar-tab" data-tab="stats" id="tabStats" data-i18n="stats">Stats</button>
             </div>
 
             <!-- Channels Panel -->
@@ -147,14 +159,51 @@
                 </div>
             </div>
 
-            <!-- Stats Panel -->
-            <div class="sidebar-panel" id="panelStats">
-                <div class="sidebar-header">
-                    <h3 data-i18n="stats">Stats</h3>
-                </div>
-                <div class="stats-body" id="statsBody">
-                    <div class="stats-loading" data-i18n="statsLoading">Loading data…</div>
-                </div>
+        </aside>
+
+        <!-- Standalone Flight Radar Panel -->
+        <aside class="stats-standalone flight-standalone closed" id="flightPanel" aria-label="Flight Radar Panel">
+            <div class="stats-panel-header">
+                <h3 data-i18n="flightPanel">رادار جوي ✈️</h3>
+                <button class="btn-icon-sm stats-close-btn" id="flightCloseBtn" title="Close">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="stats-body flight-body" id="flightBody">
+                <div class="stats-loading" data-i18n="statsLoading">Loading data…</div>
+            </div>
+        </aside>
+
+        <!-- Standalone Stats Panel -->
+        <aside class="stats-standalone" id="statsPanel" aria-label="Statistics Panel">
+            <div class="stats-panel-header">
+                <h3 data-i18n="stats">إحصاءات</h3>
+                <button class="btn-icon-sm stats-close-btn" id="statsCloseBtn" title="Close">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <!-- Conflict map -->
+            <div id="statsConflictMap" class="stats-map"></div>
+            <!-- Map legend -->
+            <div class="stats-map-legend">
+                <span class="map-legend-item">
+                    <span class="map-legend-dot" style="background:#c94040"></span>
+                    <span class="map-legend-label" data-i18n="statsAlertRed">حرجة</span>
+                </span>
+                <span class="map-legend-sep"></span>
+                <span class="map-legend-item">
+                    <span class="map-legend-dot" style="background:#e8a838"></span>
+                    <span class="map-legend-label" data-i18n="statsAlertOrange">تصعيد</span>
+                </span>
+                <span class="map-legend-sep"></span>
+                <span class="map-legend-item">
+                    <span class="map-legend-dot" style="background:#4caf7d"></span>
+                    <span class="map-legend-label" data-i18n="statsAlertGreen">مراقبة</span>
+                </span>
+            </div>
+            <!-- Scrollable widgets -->
+            <div class="stats-body" id="statsBody">
+                <div class="stats-loading" data-i18n="statsLoading">Loading data…</div>
             </div>
         </aside>
 
