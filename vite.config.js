@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
 /**
  * Dev-only middleware that mirrors the Azure Function /api/resolve-channel.
@@ -423,15 +423,271 @@ function statsPlugin() {
   };
 }
 
-export default defineConfig({
-  root: '.',
-  plugins: [resolveChannelPlugin(), intelligencePlugin(), statsPlugin()],
-  build: {
-    outDir: 'dist',
-    emptyOutDir: true,
-  },
-  server: {
-    port: 3000,
-    open: true,
-  },
+
+// ---------------------------------------------------------------------------
+// Flights Plugin — dev-only mirror of /api/flights Azure Function
+// ---------------------------------------------------------------------------
+function flightsPlugin(env = {}) {
+  console.log('[flights] Plugin initialized. Client ID present:', !!(env.OPENSKY_CLIENT_ID || process.env.OPENSKY_CLIENT_ID));
+  const _ME_COUNTRIES = [
+    { flag: '🇸🇦', ar: 'السعودية',        bbox: [16.0, 32.2, 34.5, 55.7] },
+    { flag: '🇦🇪', ar: 'الإمارات',         bbox: [22.5, 26.2, 51.0, 56.5] },
+    { flag: '🇰🇼', ar: 'الكويت',            bbox: [28.3, 30.2, 46.3, 48.7] },
+    { flag: '🇶🇦', ar: 'قطر',              bbox: [24.4, 26.4, 50.5, 51.8] },
+    { flag: '🇧🇭', ar: 'البحرين',           bbox: [25.5, 26.5, 50.2, 50.8] },
+    { flag: '🇴🇲', ar: 'عُمان',             bbox: [16.5, 26.5, 51.5, 60.0] },
+    { flag: '🇾🇪', ar: 'اليمن',             bbox: [12.0, 19.0, 42.0, 54.0] },
+    { flag: '🇮🇶', ar: 'العراق',            bbox: [29.0, 38.0, 38.5, 49.0] },
+    { flag: '🇮🇷', ar: 'إيران',             bbox: [25.0, 40.0, 44.0, 64.0] },
+    { flag: '🇸🇾', ar: 'سوريا',             bbox: [32.2, 37.5, 35.5, 42.5] },
+    { flag: '🇱🇧', ar: 'لبنان',             bbox: [33.0, 34.7, 35.0, 36.7] },
+    { flag: '🇯🇴', ar: 'الأردن',            bbox: [29.0, 33.5, 34.5, 39.5] },
+    { flag: '🇵🇸', ar: 'فلسطين',           bbox: [29.5, 33.5, 34.2, 35.9] },
+    { flag: '🇪🇬', ar: 'مصر',              bbox: [22.0, 31.7, 24.5, 37.3] },
+    { flag: '🇹🇷', ar: 'تركيا',            bbox: [35.5, 42.2, 26.0, 45.0] },
+    { flag: '🇮🇱', ar: 'إسرائيل',          bbox: [29.5, 33.5, 34.2, 35.9] },
+    { flag: '🇸🇩', ar: 'السودان',           bbox: [8.5,  22.2, 23.5, 38.7] },
+    { flag: '🇱🇾', ar: 'ليبيا',            bbox: [19.5, 33.3, 9.0,  25.5] },
+    { flag: '🇵🇰', ar: 'باكستان',           bbox: [23.5, 37.5, 60.5, 77.5] },
+    { flag: '🇦🇫', ar: 'أفغانستان',         bbox: [29.0, 38.5, 60.5, 75.0] },
+  ];
+
+  // In-memory cache for flight data to avoid OpenSky 429 errors
+  // Cache for 5 minutes to stay within OpenSky's anonymous rate limits (~400 req/day)
+  let _cache = null;
+  let _cacheTime = 0;
+  const CACHE_TTL = 300 * 1000; 
+
+  // OAuth2 Token handling
+  let _token = null;
+  let _tokenExpiry = 0;
+
+  async function getOpenSkyToken() {
+    if (_token && Date.now() < _tokenExpiry) return _token;
+    
+    // Prefer OAuth2 (Client Creds)
+    const clientId = env.OPENSKY_CLIENT_ID || process.env.OPENSKY_CLIENT_ID;
+    const clientSecret = env.OPENSKY_CLIENT_SECRET || process.env.OPENSKY_CLIENT_SECRET;
+
+    if (clientId && clientSecret) {
+      try {
+        console.log(`[flights] Attempting OAuth2 with Client ID: ${clientId.substring(0,5)}...`);
+        const params = new URLSearchParams();
+        params.append('grant_type', 'client_credentials');
+        params.append('client_id', clientId);
+        params.append('client_secret', clientSecret);
+
+        // Corrected URL based on official docs (added /auth/ path)
+        const resp = await fetch('https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params
+        });
+
+        if (!resp.ok) {
+           const errText = await resp.text();
+           console.warn('[flights] OAuth2 token fetch failed:', resp.status, errText);
+           return null;
+        }
+
+        const data = await resp.json();
+        _token = data.access_token;
+        // Buffer expiry by 60s
+        _tokenExpiry = Date.now() + (data.expires_in * 1000) - 60000;
+        return _token;
+      } catch (e) {
+        console.warn('[flights] OAuth2 Exception:', e.message);
+        return null; 
+      }
+    }
+    return null;
+  }
+
+  async function fetchFlightRadar24() {
+    // FlightRadar24 unofficial API (bounds=maxY,minY,minX,maxX)
+    // 8-42 Lat, 9-77 Lon -> 42,8,9,77
+    try {
+      const resp = await fetch('https://data-live.flightradar24.com/zones/fcgi/feed.js?bounds=42,8,9,77&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=1&maxage=14400&gliders=0&stats=1', {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'Referer': 'https://www.flightradar24.com/',
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!resp.ok) throw new Error(`FR24 HTTP ${resp.status}`);
+      const json = await resp.json();
+      
+      // FR24 returns object with IDs as keys. Values are arrays.
+      // Array indices: 1: lat, 2: lon, 3: track, 4: alt (ft), 5: speed (kts)
+      const flights = Object.values(json).filter(val => Array.isArray(val));
+      
+      // Map to OpenSky format for compatibility
+      // OpenSky: 5: lon, 6: lat, 7: alt(m), 9: vel(m/s)
+      return {
+        states: flights.map(f => {
+          const s = [];
+          s[5] = f[2]; // lon
+          s[6] = f[1]; // lat
+          s[7] = f[4] * 0.3048; // ft -> m
+          s[9] = f[5] * 0.514444; // kts -> m/s
+          return s;
+        })
+      };
+    } catch (e) {
+      console.warn('[flights] FR24 fetch failed:', e.message);
+      return null;
+    }
+  }
+
+  async function fetchOpenSky() {
+    // Determine TTL based on available credentials
+    // Auth: 30s (safe for 4000 req/day limit)
+    // Anon: 5m (safe for 400 req/day limit)
+    const hasCreds = !!(env.OPENSKY_CLIENT_ID || (env.OPENSKY_USERNAME && env.OPENSKY_PASSWORD));
+    const currentTTL = hasCreds ? 30 * 1000 : 300 * 1000;
+
+    // Serve from cache if fresh
+    if (_cache && (Date.now() - _cacheTime < currentTTL)) {
+       return _cache;
+    }
+
+    try {
+      const headers = { 'User-Agent': 'Mozilla/5.0' };
+      
+      const token = await getOpenSkyToken();
+      if (token) {
+        console.log('[flights] Using OAuth2 Token');
+        headers['Authorization'] = `Bearer ${token}`;
+      } else if (env.OPENSKY_USERNAME && env.OPENSKY_PASSWORD) {
+        // Basic Auth Fallback
+        console.log('[flights] Using Basic Auth');
+        const auth = Buffer.from(`${env.OPENSKY_USERNAME}:${env.OPENSKY_PASSWORD}`).toString('base64');
+        headers['Authorization'] = `Basic ${auth}`;
+      } else {
+        console.log('[flights] No credentials found, using anonymous fetch');
+      }
+
+      console.log('[flights] Fetching OpenSky API...');
+      const resp = await fetch('https://opensky-network.org/api/states/all?lamin=8&lamax=42&lomin=9&lomax=77', {
+        headers,
+        signal: AbortSignal.timeout(10000)
+      });
+      
+      let json;
+      if (resp.status === 429) {
+        console.warn('[flights] OpenSky 429 Rate Limit. Trying fallback source (FlightRadar24)...');
+        // Try FR24 fallback immediately
+        const fr24Data = await fetchFlightRadar24();
+        if (fr24Data && fr24Data.states && fr24Data.states.length > 0) {
+           console.log(`[flights] Switching to FlightRadar24 data (${fr24Data.states.length} flights)`);
+           json = fr24Data;
+        } else {
+           // Fallback to cache or mock
+           console.warn('[flights] All sources failed (or returned 0). Returning mock/cache.');
+           return _cache || {
+             count: 120, 
+             highest: 11500,
+             fastest: 920,
+             countries: [
+               { flag: '⚠️', ar: 'Mock Data (API Error)', n: 120 }
+             ]
+           };
+        }
+      } else if (!resp.ok) {
+        throw new Error(`OpenSky HTTP ${resp.status}`);
+      } else {
+        // Normal OpenSky success
+        json = await resp.json();
+      }
+      
+      const states = (json.states || []).filter(s => !s[8]); // exclude on-ground
+      const airborne = states.filter(s => s[5] != null && s[6] != null);
+      console.log(`[flights] Parsed ${airborne.length} airborne flights.`);
+
+      let actualLat, actualLon;
+      
+      const countryCounts = {};
+      for (const s of airborne) {
+        // OpenSky index 5: lon, index 6: lat
+        actualLon = s[5];
+        actualLat = s[6];
+
+        for (const c of _ME_COUNTRIES) {
+          const [latMin, latMax, lonMin, lonMax] = c.bbox;
+          if (actualLat >= latMin && actualLat <= latMax && actualLon >= lonMin && actualLon <= lonMax) {
+            countryCounts[c.ar] = (countryCounts[c.ar] || 0) + 1;
+            break;
+          }
+        }
+      }
+
+      const countries = _ME_COUNTRIES.map(c => ({
+        flag: c.flag,
+        ar:   c.ar,
+        n:    countryCounts[c.ar] || 0,
+      })).sort((a, b) => b.n - a.n);
+
+      const count   = airborne.length;
+      const highest = airborne.length ? Math.round(Math.max(...airborne.map(s => s[7] || 0))) : 0;
+      const fastest = airborne.length ? Math.round(Math.max(...airborne.map(s => s[9] || 0)) * 3.6) : 0;
+
+      const result = { count, highest, fastest, countries };
+      
+      // Update cache
+      if (airborne.length > 0) {
+        _cache = result;
+        _cacheTime = Date.now();
+      } else {
+        console.warn('[flights] Got 0 flights, skipping cache update.');
+      }
+      
+      return result;
+    } catch (err) {
+      console.error('[flights] Fetch failed:', err.message);
+      return _cache || { 
+        count: 0, 
+        highest: 0, 
+        fastest: 0, 
+        countries: [{ flag: '❌', ar: 'خطأ في الاتصال', n: 0 }] 
+      };
+    }
+  }
+
+  return {
+    name: 'flights',
+    configureServer(server) {
+      server.middlewares.use('/api/flights', async (req, res) => {
+        try {
+          const data = await fetchOpenSky();
+          if (!data) {
+             res.writeHead(500, { 'Content-Type': 'application/json' });
+             res.end(JSON.stringify({ error: 'Failed to fetch flight data' }));
+             return;
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(data));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+    }
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  // Load environment variables for the current mode
+  const env = loadEnv(mode, process.cwd(), '');
+  return {
+    root: '.',
+    plugins: [resolveChannelPlugin(), intelligencePlugin(), statsPlugin(), flightsPlugin(env)],
+    build: {
+      outDir: 'dist',
+      emptyOutDir: true,
+    },
+    server: {
+      port: 3000,
+      open: true,
+    },
+  };
 });

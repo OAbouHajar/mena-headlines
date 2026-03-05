@@ -1,6 +1,6 @@
 import { t, lang, onLangChange } from './i18n.js';
 
-const POLL_MS = 10 * 60 * 1000; // 10 minutes
+const POLL_MS = 600000; // 10 minutes
 
 let _pollTimer = null;
 let _headerTimer = null;
@@ -53,7 +53,7 @@ export function initStatsPanel() {
       const flightPanel = document.getElementById('flightPanel');
       if (flightPanel && !flightPanel.classList.contains('closed')) _renderFlightPanel(data);
     }).catch(() => {});
-  }, 30000);
+  }, 120000); // 2 minutes (OpenSky rate limit safe)
 
   onLangChange(() => {
     const panel = document.getElementById('statsPanel');
@@ -177,64 +177,13 @@ let _flightPollTimer  = null;
 let _flightLoaded     = false;
 
 // Middle East countries with flag, Arabic name, and bounding box [latMin,latMax,lonMin,lonMax]
-const _ME_COUNTRIES = [
-  { flag: '🇸🇦', ar: 'السعودية',        bbox: [16.0, 32.2, 34.5, 55.7] },
-  { flag: '🇦🇪', ar: 'الإمارات',         bbox: [22.5, 26.2, 51.0, 56.5] },
-  { flag: '🇰🇼', ar: 'الكويت',            bbox: [28.3, 30.2, 46.3, 48.7] },
-  { flag: '🇶🇦', ar: 'قطر',              bbox: [24.4, 26.4, 50.5, 51.8] },
-  { flag: '🇧🇭', ar: 'البحرين',           bbox: [25.5, 26.5, 50.2, 50.8] },
-  { flag: '🇴🇲', ar: 'عُمان',             bbox: [16.5, 26.5, 51.5, 60.0] },
-  { flag: '🇾🇪', ar: 'اليمن',             bbox: [12.0, 19.0, 42.0, 54.0] },
-  { flag: '🇮🇶', ar: 'العراق',            bbox: [29.0, 38.0, 38.5, 49.0] },
-  { flag: '🇮🇷', ar: 'إيران',             bbox: [25.0, 40.0, 44.0, 64.0] },
-  { flag: '🇸🇾', ar: 'سوريا',             bbox: [32.2, 37.5, 35.5, 42.5] },
-  { flag: '🇱🇧', ar: 'لبنان',             bbox: [33.0, 34.7, 35.0, 36.7] },
-  { flag: '🇯🇴', ar: 'الأردن',            bbox: [29.0, 33.5, 34.5, 39.5] },
-  { flag: '🇵🇸', ar: 'فلسطين',           bbox: [29.5, 33.5, 34.2, 35.9] },
-  { flag: '🇪🇬', ar: 'مصر',              bbox: [22.0, 31.7, 24.5, 37.3] },
-  { flag: '🇹🇷', ar: 'تركيا',            bbox: [35.5, 42.2, 26.0, 45.0] },
-  { flag: '🇮🇱', ar: 'إسرائيل',          bbox: [29.5, 33.5, 34.2, 35.9] },
-  { flag: '🇸🇩', ar: 'السودان',           bbox: [8.5,  22.2, 23.5, 38.7] },
-  { flag: '🇱🇾', ar: 'ليبيا',            bbox: [19.5, 33.3, 9.0,  25.5] },
-  { flag: '🇵🇰', ar: 'باكستان',           bbox: [23.5, 37.5, 60.5, 77.5] },
-  { flag: '🇦🇫', ar: 'أفغانستان',         bbox: [29.0, 38.5, 60.5, 75.0] },
-];
 
 async function fetchOpenSky() {
-  const resp = await fetch(
-    'https://opensky-network.org/api/states/all?lamin=8&lamax=42&lomin=9&lomax=77'
-  );
+  const resp = await fetch('/api/flights');
   if (!resp.ok) throw new Error(`OpenSky HTTP ${resp.status}`);
-  const json = await resp.json();
-  const states = (json.states || []).filter(s => !s[8]); // exclude on-ground
-  const airborne = states.filter(s => s[5] != null && s[6] != null);
-
-  // Count planes per Middle East country using bounding boxes
-  const countryCounts = {};
-  for (const s of airborne) {
-    const lat = s[5], lon = s[6];
-    for (const c of _ME_COUNTRIES) {
-      const [latMin, latMax, lonMin, lonMax] = c.bbox;
-      if (lat >= latMin && lat <= latMax && lon >= lonMin && lon <= lonMax) {
-        countryCounts[c.ar] = (countryCounts[c.ar] || 0) + 1;
-        break; // assign to first matching country
-      }
-    }
-  }
-
-  // Build full country list (all ME countries, even 0)
-  const countries = _ME_COUNTRIES.map(c => ({
-    flag: c.flag,
-    ar:   c.ar,
-    n:    countryCounts[c.ar] || 0,
-  })).sort((a, b) => b.n - a.n);
-
-  const count   = airborne.length;
-  const highest = airborne.length ? Math.round(Math.max(...airborne.map(s => s[7] || 0))) : 0;
-  const fastest = airborne.length ? Math.round(Math.max(...airborne.map(s => s[9] || 0)) * 3.6) : 0;
-
-  return { count, highest, fastest, countries };
+  return await resp.json();
 }
+
 
 function _fillFlightSlide(el, item) {
   if (!el || !item || !_flightData) return;
