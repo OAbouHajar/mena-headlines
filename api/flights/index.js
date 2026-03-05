@@ -1,4 +1,4 @@
-// api/flights/index.js — uses global fetch (Node 18+), credentials hardcoded as fallback
+// api/flights/index.js — uses global fetch (Node 18+), credentials loaded from environment variables
 const _ME_COUNTRIES = [
   { flag: '🇸🇦', ar: 'السعودية',   bbox: [16.0, 32.2, 34.5, 55.7] },
   { flag: '🇦🇪', ar: 'الإمارات',    bbox: [22.5, 26.2, 51.0, 56.5] },
@@ -102,7 +102,7 @@ module.exports = async function (context, req) {
     }
 
     // 2. Basic Auth fallback
-    if (!headers['Authorization']) {
+    if (!headers['Authorization'] && USERNAME && PASSWORD) {
       headers['Authorization'] = 'Basic ' + Buffer.from(USERNAME + ':' + PASSWORD).toString('base64');
       context.log('[flights] using Basic Auth');
     }
