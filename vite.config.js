@@ -1,5 +1,39 @@
 import { defineConfig, loadEnv } from 'vite';
 
+// ── Presence Plugin — dev mirror of /api/presence Azure Function ──────────────
+function presencePlugin() {
+  const STALE_MS = 90_000;
+  const sessions = new Map();
+  function cleanStale() {
+    const now = Date.now();
+    for (const [id, ts] of sessions) if (now - ts > STALE_MS) sessions.delete(id);
+  }
+  function liveCount() { cleanStale(); return Math.max(1, sessions.size); }
+
+  return {
+    name: 'presence',
+    configureServer(server) {
+      server.middlewares.use('/api/presence', (req, res) => {
+        const url = new URL(req.url, 'http://localhost');
+        const sid = url.searchParams.get('sid');
+        const send = (obj) => {
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+          res.end(JSON.stringify(obj));
+        };
+        if (req.method === 'POST') {
+          if (sid) sessions.set(sid, Date.now());
+          send({ count: liveCount() });
+        } else if (req.method === 'DELETE') {
+          if (sid) sessions.delete(sid);
+          send({ count: liveCount() });
+        } else {
+          send({ count: liveCount() });
+        }
+      });
+    },
+  };
+}
+
 /**
  * Dev-only middleware that mirrors the Azure Function /api/resolve-channel.
  * Fetches the YouTube channel page server-side (no CORS issue) and returns JSON.
@@ -679,7 +713,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     root: '.',
-    plugins: [resolveChannelPlugin(), intelligencePlugin(), statsPlugin(), flightsPlugin(env)],
+    plugins: [presencePlugin(), resolveChannelPlugin(), intelligencePlugin(), statsPlugin(), flightsPlugin(env)],
     build: {
       outDir: 'dist',
       emptyOutDir: true,
