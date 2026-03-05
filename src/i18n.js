@@ -5,7 +5,7 @@ const STORAGE_KEY = 'ytmv_lang';
 const translations = {
   en: {
     // Header
-    appTitle: 'Live Intelligence Platform',
+    appTitle: 'Middle East Live',
     addChannel: 'Add Channel',
     theatreTitle: 'Theatre Mode (T)',
     refreshTitle: 'Refresh All (R)',
@@ -71,6 +71,9 @@ const translations = {
     intelConfidence: 'Confidence',
     intelRiskLevel: 'Risk Level',
     intelOutlook: 'Short-Term Outlook',
+    intelMarketData: 'Live Market & Airspace',
+    intelMarketPulse: 'Market & Geopolitical Link',
+    intelFlightsActive: 'active flights in region',
     intelUpdatedNow: 'Updated just now',
     intelUpdatedSecs: (s) => `Updated ${s}s ago`,
     intelUpdatedMins: (m) => `Updated ${m}m ago`,
@@ -118,7 +121,7 @@ const translations = {
     tensionNote: 'Based on global armed conflict news. Indicative only.',
   },
   ar: {
-    appTitle: 'منصة الاستخبارات المباشرة',
+    appTitle: 'Middle East Live',
     addChannel: 'إضافة قناة',
     theatreTitle: 'وضع المسرح (T)',
     refreshTitle: 'تحديث الكل (R)',
@@ -178,6 +181,9 @@ const translations = {
     intelConfidence: 'مستوى الثقة',
     intelRiskLevel: 'مستوى المخاطر',
     intelOutlook: 'التوقعات قصيرة المدى',
+    intelMarketData: 'السوق والمجال الجوي لحظياً',
+    intelMarketPulse: 'ربط السوق بالجيوسياسة',
+    intelFlightsActive: 'رحلة نشطة في المنطقة',
     intelUpdatedNow: 'تم التحديث للتو',
     intelUpdatedSecs: (s) => `تم التحديث منذ ${s}ث`,
     intelUpdatedMins: (m) => `تم التحديث منذ ${m}د`,
