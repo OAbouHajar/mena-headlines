@@ -334,40 +334,7 @@ function statsPlugin() {
   }
 
   // GDELT DOC API v2 — free, no auth, real-time conflict/war news
-  async function fetchConflictNews() {
-    try {
-      const query = encodeURIComponent(
-        'war OR "armed conflict" OR airstrike OR offensive OR ceasefire OR "military operation" OR shelling OR siege'
-      );
-      const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&format=json&maxrecords=20&timespan=48h`;
-      const resp = await fetchWithTimeout(url, { headers: { 'User-Agent': 'yt-multi-player/1.0' } });
-      const json = await resp.json();
-      const articles = json?.articles ?? [];
-      return articles.map((a) => {
-        const title = (a.title || '').toLowerCase();
-        let level;
-        if (/kill|dead|death|airstrike|bomb|missile|massacre|execut|shoot/i.test(title)) level = 'red';
-        else if (/fight|clash|offensive|shelling|troops|casual|soldier|battle|assault|siege/i.test(title)) level = 'orange';
-        else level = 'green';
-        const rawDate = a.seendate || '';
-        const pubDate = rawDate
-          ? new Date(rawDate.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z')).toUTCString()
-          : '';
-        return {
-          title: a.title || '',
-          link: a.url || '',
-          pubDate,
-          level,
-          country: a.sourcecountry || '',
-          eventType: '',
-          severity: '',
-          domain: a.domain || '',
-          lat: null,
-          lon: null,
-        };
-      });
-    } catch { return []; }
-  }
+  // OAuth token cache (valid 24h, reuse across requests)
 
   // OAuth token cache (valid 24h, reuse across requests)
   let acledToken = null;
@@ -430,12 +397,11 @@ function statsPlugin() {
   ];
 
   async function buildStats() {
-    const [oil, gold, brent, natgas, alerts, acled, ...stockPrices] = await Promise.all([
+    const [oil, gold, brent, natgas, acled, ...stockPrices] = await Promise.all([
       fetchYahooFinance('CL=F'),
       fetchYahooFinance('GC=F'),
       fetchYahooFinance('BZ=F'),
       fetchYahooFinance('NG=F'),
-      fetchConflictNews(),
       fetchACLED(),
       ...TOP_STOCKS.map(s => fetchYahooFinance(s.symbol)),
     ]);
@@ -447,7 +413,6 @@ function statsPlugin() {
     return {
       ts: new Date().toISOString(),
       prices: { oil, gold, brent, natgas },
-      alerts,
       conflicts: acled,
       stocks,
     };
@@ -728,12 +693,117 @@ function flightsPlugin(env = {}) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Tweets Plugin — dev-only mirror of /api/tweets Azure Function
+// Uses official gov/org RSS feeds (Nitter is globally dead as of 2026)
+// Each source is linked to the corresponding X.com profile handle
+// ---------------------------------------------------------------------------
+function tweetsPlugin() {
+  // Official RSS sources grouped by country, linked to X handles
+  const SOURCES = [
+    // 🇺🇸 US Government & Policy
+    { handle: 'WhiteHouse',    label: 'White House',   flag: '🇺🇸', group: 'us',     rss: 'https://www.whitehouse.gov/briefing-room/statements-and-releases/feed/' },
+    { handle: 'StateDept',     label: 'Politico',      flag: '🇺🇸', group: 'us',     rss: 'https://www.politico.com/rss/politicopicks.xml' },
+    { handle: 'DeptofDefense', label: 'AP Politics',   flag: '🇺🇸', group: 'us',     rss: 'https://feeds.apnews.com/rss/apf-politics' },
+    // 🇮🇱 Israel
+    { handle: 'netanyahu',     label: 'Israel PM',     flag: '🇮🇱', group: 'israel', rss: 'https://www.timesofisrael.com/feed/' },
+    { handle: 'IDF',           label: 'IDF / JPost',   flag: '🇮🇱', group: 'israel', rss: 'https://www.jpost.com/rss/rssfeedsfrontpage.aspx' },
+    // 🇮🇷 Iran
+    { handle: 'khamenei_ir',   label: 'Khamenei',      flag: '🇮🇷', group: 'iran',   rss: 'https://english.khamenei.ir/rss/' },
+    { handle: 'IranMFA_Media', label: 'Iran Analysis', flag: '🇮🇷', group: 'iran',   rss: 'https://www.al-monitor.com/rss' },
+  ];
+
+  function decodeEntities(str) {
+    return str
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'")
+      .replace(/&#\d+;/g, '');
+  }
+
+  function parseRssItems(xml, maxItems = 3) {
+    const items = [];
+    const parts = xml.split(/<item[\s>]/i);
+    parts.shift();
+    for (const part of parts) {
+      if (items.length >= maxItems) break;
+      const titleMatch = part.match(/<title[^>]*>\s*(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?\s*<\/title>/i);
+      const linkMatch  = part.match(/<link[^>]*>([\s\S]*?)<\/link>/i);
+      const dateMatch  = part.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i);
+      if (titleMatch) {
+        const title = decodeEntities(titleMatch[1].replace(/<[^>]+>/g, '').trim());
+        if (title.length > 5) {
+          items.push({
+            title: title.length > 200 ? title.slice(0, 197) + '…' : title,
+            link:  linkMatch ? linkMatch[1].trim() : '',
+            date:  dateMatch ? new Date(dateMatch[1].trim()).getTime() : Date.now(),
+          });
+        }
+      }
+    }
+    return items;
+  }
+
+  async function fetchSourceItems(src) {
+    try {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), 12000);
+      const resp = await fetch(src.rss, {
+        headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml,application/xml,text/xml' },
+        signal: ctrl.signal,
+      });
+      clearTimeout(id);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const xml = await resp.text();
+      const parsed = parseRssItems(xml);
+      console.log(`[tweets] ${src.handle} → ${parsed.length} items`);
+      return parsed;
+    } catch (e) {
+      console.warn(`[tweets] ${src.handle} failed: ${e.message}`);
+      return [];
+    }
+  }
+
+  let tweetsCache = null;
+  let tweetsCacheTime = 0;
+  const CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+  return {
+    name: 'tweets',
+    configureServer(server) {
+      server.middlewares.use('/api/tweets', async (req, res) => {
+        if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
+        try {
+          const now = Date.now();
+          if (!tweetsCache || now - tweetsCacheTime > CACHE_TTL) {
+            const results = await Promise.allSettled(
+              SOURCES.map(async (src) => {
+                const items = await fetchSourceItems(src);
+                return { ...src, items };
+              })
+            );
+            tweetsCache = results
+              .filter(r => r.status === 'fulfilled' && r.value.items.length > 0)
+              .map(r => r.value);
+            tweetsCacheTime = now;
+            console.log(`[tweets] Cache updated: ${tweetsCache.length}/${SOURCES.length} sources`);
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=180' });
+          res.end(JSON.stringify(tweetsCache || []));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // Load environment variables for the current mode
   const env = loadEnv(mode, process.cwd(), '');
   return {
     root: '.',
-    plugins: [presencePlugin(), resolveChannelPlugin(), intelligencePlugin(), statsPlugin(), flightsPlugin(env)],
+    plugins: [presencePlugin(), resolveChannelPlugin(), intelligencePlugin(), statsPlugin(), flightsPlugin(env), tweetsPlugin()],
     build: {
       outDir: 'dist',
       emptyOutDir: true,

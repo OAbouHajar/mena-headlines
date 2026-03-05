@@ -56,41 +56,7 @@ async function fetchYahooFinance(symbol) {
   }
 }
 
-// GDELT DOC API v2 — free, no auth, real-time war/conflict news
-async function fetchConflictNews() {
-  try {
-    const query = encodeURIComponent(
-      'war OR "armed conflict" OR airstrike OR offensive OR ceasefire OR "military operation" OR shelling OR siege'
-    );
-    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&format=json&maxrecords=20&timespan=48h`;
-    const raw = await fetchUrl(url, 'GET', null, {}, 15000);
-    const json = JSON.parse(raw);
-    const articles = json?.articles ?? [];
-    return articles.map((a) => {
-      const title = (a.title || '').toLowerCase();
-      let level;
-      if (/kill|dead|death|airstrike|bomb|missile|massacre|execut|shoot/i.test(title)) level = 'red';
-      else if (/fight|clash|offensive|shelling|troops|casual|soldier|battle|assault|siege/i.test(title)) level = 'orange';
-      else level = 'green';
-      const rawDate = a.seendate || '';
-      const pubDate = rawDate
-        ? new Date(rawDate.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z')).toUTCString()
-        : '';
-      return {
-        title: a.title || '',
-        link: a.url || '',
-        pubDate,
-        level,
-        country: a.sourcecountry || '',
-        eventType: '',
-        severity: '',
-        domain: a.domain || '',
-        lat: null,
-        lon: null,
-      };
-    });
-  } catch { return []; }
-}
+// OAuth token cache
 
 // OAuth token cache
 let acledToken = null;
@@ -154,12 +120,11 @@ module.exports = async function (context, req) {
   ];
 
   try {
-    const [oil, gold, brent, natgas, gdacs, acled, ...stockPrices] = await Promise.all([
+    const [oil, gold, brent, natgas, acled, ...stockPrices] = await Promise.all([
       fetchYahooFinance('CL=F'),
       fetchYahooFinance('GC=F'),
       fetchYahooFinance('BZ=F'),
       fetchYahooFinance('NG=F'),
-      fetchConflictNews(),
       fetchACLED(),
       ...TOP_STOCKS.map(s => fetchYahooFinance(s.symbol)),
     ]);
@@ -173,7 +138,6 @@ module.exports = async function (context, req) {
     const payload = {
       ts: new Date().toISOString(),
       prices: { oil, gold, brent, natgas },
-      alerts: gdacs,
       conflicts: acled,
       stocks,
     };
