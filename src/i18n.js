@@ -150,6 +150,22 @@ const translations = {
     hoursAgo: (h) => `${h}h ago`,
     // Stats
     topStocks: 'Top 10 Stocks',
+    // Channel search
+    searchChannels: 'Search channels…',
+    searchClear: 'Clear search',
+    noChannelsFound: 'No channels match your search',
+    // Keyboard shortcuts
+    keyboardShortcuts: 'Keyboard Shortcuts',
+    shortcutKey: 'Key',
+    shortcutAction: 'Action',
+    shortcutSidebar: 'Toggle Sidebar',
+    shortcutTheatre: 'Theatre Mode',
+    shortcutRefresh: 'Refresh All Streams',
+    shortcutStats: 'Toggle Stats Panel',
+    shortcutFlight: 'Toggle Air Radar',
+    shortcutHelp: 'Show Keyboard Shortcuts',
+    shortcutEscape: 'Close / Exit',
+    shortcutIntel: 'Open AI Intelligence',
   },
   ar: {
     appTitle: 'Middle East Live',
@@ -291,6 +307,22 @@ const translations = {
     hoursAgo: (h) => `${h}س`,
     // Stats
     topStocks: 'أفضل 10 أسهم',
+    // Channel search
+    searchChannels: 'بحث في القنوات…',
+    searchClear: 'مسح البحث',
+    noChannelsFound: 'لا توجد قنوات تطابق بحثك',
+    // Keyboard shortcuts
+    keyboardShortcuts: 'اختصارات لوحة المفاتيح',
+    shortcutKey: 'المفتاح',
+    shortcutAction: 'الإجراء',
+    shortcutSidebar: 'إظهار / إخفاء الشريط الجانبي',
+    shortcutTheatre: 'وضع المسرح',
+    shortcutRefresh: 'تحديث جميع البثوث',
+    shortcutStats: 'تبديل لوحة الإحصاءات',
+    shortcutFlight: 'تبديل رادار الطيران',
+    shortcutHelp: 'عرض اختصارات لوحة المفاتيح',
+    shortcutEscape: 'إغلاق / خروج',
+    shortcutIntel: 'فتح تحليل الذكاء الاصطناعي',
   },
 };
 

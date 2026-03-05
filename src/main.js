@@ -35,6 +35,11 @@ const modalHandle = $('#modalHandle');
 const modalChannelId = $('#modalChannelId');
 let modalEditId = null;
 
+// Channel search
+const channelSearchInput = $('#channelSearchInput');
+const channelSearchClear = $('#channelSearchClear');
+let _channelFilter = '';
+
 // ============ Dynamic Grid Helper ============
 function gridCols(count) {
   if (count <= 1) return '1fr';
@@ -72,6 +77,7 @@ function translateStatic() {
   $('#theatreBtn').title = t('theatreTitle');
   $('#refreshBtn').title = t('refreshTitle');
   $('#resetBtn').title = t('resetTitle');
+  $('#shortcutsBtn').title = t('keyboardShortcuts') + ' (?)';
 }
 
 // ============ Toast ============
