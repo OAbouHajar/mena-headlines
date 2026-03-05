@@ -120,6 +120,9 @@
                     </div>
                 </div>
             </div>
+            <button class="btn-icon" id="shortcutsBtn" title="Keyboard Shortcuts (?)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </button>
             <button class="btn-icon" id="theatreBtn" title="Theatre Mode (T)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
             </button>
@@ -170,6 +173,13 @@
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
                         </button>
                     </div>
+                </div>
+                <div class="channel-search-wrap" id="channelSearchWrap">
+                    <svg class="channel-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" class="channel-search-input" id="channelSearchInput" data-i18n-placeholder="searchChannels" placeholder="Search channels…" autocomplete="off" spellcheck="false">
+                    <button class="channel-search-clear" id="channelSearchClear" title="Clear" aria-label="Clear search" hidden>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                 </div>
                 <div class="sidebar-content" id="channelList"></div>
             </div>
@@ -319,6 +329,37 @@
             </div>
         </div>
     </aside>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="shortcuts-overlay" id="shortcutsOverlay" aria-modal="true" role="dialog" aria-label="Keyboard Shortcuts">
+        <div class="shortcuts-modal">
+            <div class="shortcuts-header">
+                <span data-i18n="keyboardShortcuts">Keyboard Shortcuts</span>
+                <button class="btn-icon-sm shortcuts-close-btn" id="shortcutsCloseBtn" title="Close">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="shortcuts-body">
+                <table class="shortcuts-table">
+                    <thead>
+                        <tr>
+                            <th data-i18n="shortcutKey">Key</th>
+                            <th data-i18n="shortcutAction">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><kbd>S</kbd></td><td data-i18n="shortcutSidebar">Toggle Sidebar</td></tr>
+                        <tr><td><kbd>T</kbd></td><td data-i18n="shortcutTheatre">Theatre Mode</td></tr>
+                        <tr><td><kbd>R</kbd></td><td data-i18n="shortcutRefresh">Refresh All Streams</td></tr>
+                        <tr><td><kbd>D</kbd></td><td data-i18n="shortcutStats">Toggle Stats Panel</td></tr>
+                        <tr><td><kbd>F</kbd></td><td data-i18n="shortcutFlight">Toggle Air Radar</td></tr>
+                        <tr><td><kbd>?</kbd></td><td data-i18n="shortcutHelp">Show Keyboard Shortcuts</td></tr>
+                        <tr><td><kbd>Esc</kbd></td><td data-i18n="shortcutEscape">Close / Exit</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="/src/main.js"></script>
 </body>
