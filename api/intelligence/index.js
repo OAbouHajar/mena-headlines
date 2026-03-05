@@ -10,9 +10,9 @@
 const { AzureOpenAI }       = require('openai');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
-const API_KEY     = 'REDACTED_AZURE_OPENAI_KEY';
+const API_KEY     = process.env.AZURE_OPENAI_API_KEY;
 const API_VERSION = '2024-12-01-preview';
-const ENDPOINT    = 'https://***REMOVED***/';
+const ENDPOINT    = process.env.AZURE_OPENAI_ENDPOINT || 'https://***REMOVED***/';
 const MODEL_NAME  = '***REMOVED***';
 const DEPLOYMENT  = '***REMOVED***';
 

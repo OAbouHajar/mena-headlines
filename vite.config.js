@@ -101,9 +101,9 @@ function resolveChannelPlugin() {
  * Fetches RSS feeds server-side, then calls Azure OpenAI using the official SDK.
  */
 function intelligencePlugin() {
-  const API_KEY     = 'REDACTED_AZURE_OPENAI_KEY';
+  const API_KEY     = process.env.AZURE_OPENAI_API_KEY;
   const API_VERSION = '2024-12-01-preview';
-  const ENDPOINT    = 'https://***REMOVED***/';
+  const ENDPOINT    = process.env.AZURE_OPENAI_ENDPOINT || 'https://your-resource.cognitiveservices.azure.com/';
   const MODEL_NAME  = '***REMOVED***';
   const DEPLOYMENT  = '***REMOVED***';
 
