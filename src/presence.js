@@ -65,35 +65,43 @@ async function removeSession() {
 export async function initPresence(onCountChange) {
   if (!isConfigured || !db) return () => {};
 
+  // Show at least 1 (current user) immediately — don't wait for Firestore
+  if (typeof onCountChange === 'function') onCountChange(1);
+
   try {
     await ensureRefs();
 
     _sessionId = generateId();
 
-    // Write immediately so we appear in the count right away
-    await writeHeartbeat();
+    // Best-effort cleanup when tab closes
+    window.addEventListener('beforeunload', removeSession);
 
-    // Refresh heartbeat on a timer
-    _heartbeatTimer = setInterval(writeHeartbeat, HEARTBEAT_MS);
-
-    // Also refresh when the tab becomes visible again (user returns to tab)
+    // Also refresh when the tab becomes visible again
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') writeHeartbeat();
     });
 
-    // Best-effort cleanup when tab closes
-    window.addEventListener('beforeunload', removeSession);
+    // Set up real-time listener FIRST (read), then write heartbeat
+    _unsubSnapshot = _onSnapshot(
+      _colRef,
+      (snapshot) => {
+        const now = Date.now();
+        let count = 0;
+        snapshot.forEach((d) => {
+          const ts = d.data().lastSeen?.toMillis?.();
+          if (ts && now - ts < STALE_MS) count++;
+        });
+        if (typeof onCountChange === 'function') onCountChange(Math.max(1, count));
+      },
+      (err) => {
+        console.warn('[presence] snapshot error:', err.message);
+        // Keep badge showing at least 1
+      }
+    );
 
-    // Listen to whole presence collection — filter stale locally
-    _unsubSnapshot = _onSnapshot(_colRef, (snapshot) => {
-      const now   = Date.now();
-      let count   = 0;
-      snapshot.forEach((d) => {
-        const ts = d.data().lastSeen?.toMillis?.();
-        if (ts && now - ts < STALE_MS) count++;
-      });
-      if (typeof onCountChange === 'function') onCountChange(Math.max(1, count));
-    });
+    // Write heartbeat after listener is live
+    await writeHeartbeat();
+    _heartbeatTimer = setInterval(writeHeartbeat, HEARTBEAT_MS);
 
     return () => {
       clearInterval(_heartbeatTimer);
