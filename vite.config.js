@@ -541,10 +541,9 @@ function flightsPlugin(env = {}) {
 
   async function fetchOpenSky() {
     // Determine TTL based on available credentials
-    // Auth: 30s (safe for 4000 req/day limit)
-    // Anon: 5m (safe for 400 req/day limit)
+    // Auth: 600s (10 min) per user request
     const hasCreds = !!(env.OPENSKY_CLIENT_ID || (env.OPENSKY_USERNAME && env.OPENSKY_PASSWORD));
-    const currentTTL = hasCreds ? 30 * 1000 : 300 * 1000;
+    const currentTTL = 600 * 1000; // 10 minutes for all
 
     // Serve from cache if fresh
     if (_cache && (Date.now() - _cacheTime < currentTTL)) {
