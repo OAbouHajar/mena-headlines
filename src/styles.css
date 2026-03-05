@@ -243,6 +243,17 @@ h1, h2, h3, h4, h5, h6 {
     .header-price-bar { display: none; }
 }
 
+/* Hide button text labels in header controls when viewport is tight */
+@media (max-width: 1400px) {
+    .header-controls .btn span,
+    .header-controls #langToggleBtn span {
+        display: none;
+    }
+    .header-controls .btn {
+        padding: 6px 8px;
+    }
+}
+
 /* ============ Buttons ============ */
 .btn {
     padding: 6px 13px;
@@ -285,6 +296,105 @@ h1, h2, h3, h4, h5, h6 {
     background: rgba(78,122,160,0.12);
     border-color: var(--border-light);
     color: var(--accent-light);
+}
+
+.contributor-area {
+    position: relative;
+}
+.contributor-badge {
+    opacity: 0.75;
+    cursor: pointer;
+}
+.contributor-badge:hover {
+    opacity: 1;
+}
+.contributor-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: var(--bg-surface-hover);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    min-width: 280px;
+    max-height: 380px;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    transform-origin: top right;
+    animation: dropdownIn 0.25s var(--ease-out-expo);
+    z-index: 1000;
+}
+.contributor-dropdown.visible {
+    display: flex;
+}
+[dir="rtl"] .contributor-dropdown {
+    right: auto;
+    left: 0;
+    transform-origin: top left;
+}
+.contributor-dropdown-header {
+    padding: 14px 18px 10px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+}
+.contributor-dropdown-list {
+    overflow-y: auto;
+    max-height: 320px;
+    padding: 6px 0;
+}
+.contributor-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    transition: background 0.15s;
+}
+.contributor-item:hover {
+    background: rgba(78,122,160,0.08);
+    color: var(--text-primary);
+}
+.contributor-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border-light);
+    flex-shrink: 0;
+}
+.contributor-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.contributor-name {
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.contributor-commits {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 1px;
+}
+.contributor-loading {
+    padding: 24px 18px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+.contributor-error {
+    padding: 16px 18px;
+    text-align: center;
+    color: var(--error, #e74c3c);
+    font-size: 12px;
 }
 
 .btn-ghost {

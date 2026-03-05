@@ -53,6 +53,10 @@ const translations = {
     welcomeBack: (name) => `Welcome, ${name}`,
     signedOut: 'Signed out',
     cloudSync: 'Synced to cloud',
+    contributors: 'Contributors',
+    projectContributors: 'Project Contributors',
+    nContributions: (n) => `${n} contributions`,
+    contributorLoadError: 'Failed to load contributors',
     firebaseNotConfigured: 'Firebase not configured — see .env file',
     // Lang toggle
     langLabel: 'عربي',
@@ -191,6 +195,10 @@ const translations = {
     welcomeBack: (name) => `مرحباً، ${name}`,
     signedOut: 'تم تسجيل الخروج',
     cloudSync: 'تمت المزامنة مع السحابة',
+    contributors: 'المساهمون',
+    projectContributors: 'المساهمون في المشروع',
+    nContributions: (n) => `${n} مساهمة`,
+    contributorLoadError: 'فشل تحميل المساهمين',
     firebaseNotConfigured: 'لم يتم إعداد Firebase — راجع ملف .env',
     langLabel: 'EN',
     // Sidebar updates tab
