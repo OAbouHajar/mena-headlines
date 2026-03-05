@@ -5,6 +5,7 @@ import { onAuthReady } from './sync.js';
 import { NewsTicker } from './ticker.js';
 import { initIntelPanel, openIntelPanel, closeIntelPanel } from './intelligence.js';
 import { initStatsPanel, toggleStatsPanel, toggleFlightPanel } from './stats.js';
+import { initPresence } from './presence.js';
 
 // ============ DOM References ============
 const $ = (sel) => document.querySelector(sel);
@@ -609,6 +610,18 @@ render();
 new NewsTicker();
 initIntelPanel();
 initStatsPanel();
+
+// ============ Live Users Counter ============
+(function () {
+  const badge = $('#liveUsersBadge');
+  const countEl = $('#liveUsersCount');
+  initPresence((count) => {
+    if (!badge || !countEl) return;
+    countEl.textContent = count;
+    badge.style.display = 'flex';
+  });
+})();
+
 // ============ Global Keyboard Shortcuts ============
 document.addEventListener('keydown', (e) => {
   // Ignore inputs and textareas
