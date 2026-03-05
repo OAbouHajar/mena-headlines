@@ -21,11 +21,11 @@ const _ME_COUNTRIES = [
   { flag: '🇦🇫', ar: 'أفغانستان',   bbox: [29.0, 38.5, 60.5, 75.0] },
 ];
 
-// Credentials — env vars take priority, hardcoded as guaranteed fallback
-const CLIENT_ID     = process.env.OPENSKY_CLIENT_ID     || 'YOUR_OPENSKY_EMAIL-api-client';
-const CLIENT_SECRET = process.env.OPENSKY_CLIENT_SECRET || 'REDACTED_OPENSKY_SECRET';
-const USERNAME      = process.env.OPENSKY_USERNAME      || 'YOUR_OPENSKY_EMAIL';
-const PASSWORD      = process.env.OPENSKY_PASSWORD      || 'REDACTED_PASSWORD';
+// Credentials — set via environment variables (see .env.example)
+const CLIENT_ID     = process.env.OPENSKY_CLIENT_ID;
+const CLIENT_SECRET = process.env.OPENSKY_CLIENT_SECRET;
+const USERNAME      = process.env.OPENSKY_USERNAME;
+const PASSWORD      = process.env.OPENSKY_PASSWORD;
 
 let _token = null;
 let _tokenExpiry = 0;

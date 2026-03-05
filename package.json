@@ -1,9 +1,14 @@
 {
-  "name": "youtube-multi-player",
+  "name": "mena-headlines",
   "version": "1.0.0",
-  "description": "Multi-Channel YouTube Live Viewer",
-  "private": true,
+  "description": "Real-time Middle East intelligence dashboard — multi-channel live news, flight data, market tickers, and AI analysis",
+  "license": "MIT",
   "type": "module",
+  "homepage": "https://menaheadlines.net",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OAbouHajar/mena-headlines.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

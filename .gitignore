@@ -1,5 +1,25 @@
-node_modules
-dist
-.vite
-*.local
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+
+# Environment variables — NEVER commit
 .env
+.env.local
+.env.*.local
+*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
