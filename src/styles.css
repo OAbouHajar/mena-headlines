@@ -170,52 +170,70 @@ h1, h2, h3, h4, h5, h6 {
     flex-shrink: 0;
 }
 
-/* ---- Header Price Bar ---- */
+/* ---- Header Price Ticker ---- */
 .header-price-bar {
     display: flex;
     align-items: center;
-    gap: 0;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
     align-self: stretch;
     border-left: 1px solid var(--border-light);
     border-right: 1px solid var(--border-light);
-}
-.header-price-chip {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 0 14px;
-    flex: 1;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    height: 100%;
-}
-.header-price-divider {
-    width: 1px;
-    height: 60%;
-    background: var(--border-light);
     flex-shrink: 0;
 }
+.header-price-ticker {
+    position: relative;
+    overflow: hidden;
+    width: 230px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+.hpc-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    white-space: nowrap;
+    will-change: transform, opacity;
+    transform: translateY(0);
+    opacity: 1;
+}
+.hpc-slide.hpc-below {
+    transform: translateY(100%);
+    opacity: 0;
+}
+.hpc-slide.hpc-exit-up {
+    animation: hpcExitUp 0.38s ease forwards;
+}
+.hpc-slide.hpc-enter-up {
+    animation: hpcEnterUp 0.38s ease forwards;
+}
+@keyframes hpcExitUp {
+    from { transform: translateY(0);    opacity: 1; }
+    to   { transform: translateY(-105%); opacity: 0; }
+}
+@keyframes hpcEnterUp {
+    from { transform: translateY(105%);  opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
 .hpc-label {
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
     color: var(--text-muted, #6c7a8a);
     text-transform: uppercase;
     flex-shrink: 0;
 }
 .hpc-price {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-primary, #e0e8f0);
     flex-shrink: 0;
 }
 .hpc-change {
-    font-size: 14.5px;
-    font-weight: 500;
+    font-size: 11.5px;
+    font-weight: 600;
     flex-shrink: 0;
 }
 .hpc-change.up   { color: #4caf7d; }
@@ -373,6 +391,52 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 }
 .sidebar.collapsed { width: 0; opacity: 0; border: none; box-shadow: none; }
 
+/* ─── Standalone Stats Panel ──────────────────────────── */
+.stats-standalone {
+    width: 272px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: width 0.32s var(--ease-out-expo), opacity 0.22s;
+    z-index: 9;
+}
+[dir="rtl"] .stats-standalone {
+    border-right: none;
+    border-left: 1px solid var(--border);
+}
+.stats-standalone.closed {
+    width: 0;
+    opacity: 0;
+    border: none;
+}
+.stats-panel-header {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    background: var(--bg-surface);
+}
+.stats-panel-header h3 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0;
+}
+.stats-close-btn {
+    opacity: 0.55;
+    transition: opacity 0.15s;
+}
+.stats-close-btn:hover { opacity: 1; }
+.theatre .stats-standalone,
+.fullscreen .stats-standalone { display: none !important; }
+
 /* ── Sidebar Tabs ── */
 .sidebar-tabs {
     display: flex;
@@ -387,7 +451,7 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--text-muted);
+    color: #d9af6c;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -1168,6 +1232,166 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 .btn-intel:active { transform: scale(0.96); }
 .btn-intel svg { flex-shrink: 0; }
 
+/* ── Stats Toggle Button ─────────────────────────────── */
+.btn-stats {
+    background: transparent;
+    color: #4caf7d;
+    border: 1px solid rgba(76,175,125,0.30);
+    padding: 5px 12px;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: all 0.18s ease;
+}
+.btn-stats:hover {
+    background: rgba(76,175,125,0.10);
+    border-color: rgba(76,175,125,0.50);
+    color: #6fcf97;
+    transform: none;
+    box-shadow: none;
+}
+.btn-stats.active {
+    background: rgba(76,175,125,0.12);
+    border-color: rgba(76,175,125,0.45);
+    color: #6fcf97;
+}
+.btn-stats:active { transform: scale(0.96); }
+.btn-stats svg { flex-shrink: 0; }
+
+/* ── Flight Radar Button ── */
+.btn-flight {
+    background: transparent;
+    color: #4ea8de;
+    border: 1px solid rgba(78,168,222,0.30);
+    padding: 5px 12px;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: all 0.18s ease;
+}
+.btn-flight:hover {
+    background: rgba(78,168,222,0.10);
+    border-color: rgba(78,168,222,0.50);
+    color: #74c0e8;
+    transform: none;
+    box-shadow: none;
+}
+.btn-flight.active {
+    background: rgba(78,168,222,0.12);
+    border-color: rgba(78,168,222,0.45);
+    color: #74c0e8;
+}
+.btn-flight:active { transform: scale(0.96); }
+.btn-flight svg { flex-shrink: 0; }
+
+/* ── Header ticker divider & flight ticker ── */
+.header-ticker-divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--border-light);
+    flex-shrink: 0;
+    margin: 6px 0;
+}
+.header-flight-ticker {
+    position: relative;
+    overflow: hidden;
+    width: 200px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+/* ── Flight Panel body ── */
+.flight-standalone {
+    /* width/open/close is handled by .stats-standalone */
+}
+.theatre .flight-standalone,
+.fullscreen .flight-standalone { display: none !important; }
+
+.flight-body {
+    /* reuses .stats-body */
+}
+
+.stat-card-hero-full {
+    width: 100%;
+    text-align: center;
+    padding: 16px 12px;
+}
+.stat-card-hero-full .stat-hero-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #4ea8de;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+/* ── Flight countries breakdown ── */
+.flight-countries {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 2px 0;
+}
+.flight-country-row {
+    display: grid;
+    grid-template-columns: 20px 1fr auto auto;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    transition: opacity 0.2s;
+}
+.flight-country-row.flt-zero {
+    opacity: 0.38;
+}
+.flight-country-flag {
+    font-size: 14px;
+    text-align: center;
+    line-height: 1;
+}
+.flight-country-rank {
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+}
+.flight-country-name {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 11px;
+}
+.flight-country-bar-wrap {
+    width: 60px;
+    height: 4px;
+    background: rgba(78,168,222,0.12);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.flight-country-bar {
+    display: block;
+    height: 100%;
+    background: #4ea8de;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+.flight-country-count {
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: right;
+}
+.flight-update-time {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 8px 0 4px;
+    opacity: 0.6;
+}
+
 /* ============================================================
    INTELLIGENCE BACKDROP
    ============================================================ */
@@ -1671,6 +1895,70 @@ body.intel-open { overflow: hidden; }
    Stats Panel
    ========================================================================== */
 
+/* Leaflet conflict map */
+.stats-map {
+    width: 100%;
+    height: 190px;
+    background: #0e1217;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Map colour legend */
+.stats-map-legend {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+    flex-shrink: 0;
+}
+.map-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.map-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+.map-legend-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+}
+.map-legend-sep {
+    width: 1px;
+    height: 12px;
+    background: var(--border);
+    margin: 0 10px;
+    flex-shrink: 0;
+}
+
+/* Leaflet dark-mode overrides */
+.leaflet-container {
+    background: #0e1217;
+    font-family: inherit;
+}
+.leaflet-tile-pane { filter: brightness(0.85) contrast(1.05); }
+.gdacs-tooltip {
+    background: rgba(14,18,23,0.93);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.gdacs-tooltip::before { display: none; }
+
 /* Body scrollable area */
 .stats-body {
     overflow-y: auto;
@@ -1683,13 +1971,13 @@ body.intel-open { overflow: hidden; }
 
 /* ---- Global Tension Score ---- */
 .tension-card {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.06);
     border: 1px solid var(--border);
+    border-left: 3px solid var(--tension-color, #4caf7d);
     border-radius: var(--radius, 8px);
     padding: 14px 14px 12px;
     margin-bottom: 16px;
     position: relative;
-    overflow: hidden;
 }
 .tension-card::before {
     content: '';
@@ -1706,21 +1994,23 @@ body.intel-open { overflow: hidden; }
     margin-bottom: 10px;
 }
 .tension-score {
-    font-size: 42px;
-    font-weight: 800;
+    font-size: 48px;
+    font-weight: 900;
     line-height: 1;
-    color: var(--tension-color, var(--text-primary, #e0e8f0));
-    letter-spacing: -2px;
+    color: var(--text-primary, #e0e8f0);
+    letter-spacing: -3px;
+    text-shadow: 0 0 20px var(--tension-color, #4caf7d);
 }
 .tension-right {
     text-align: right;
 }
 .tension-label {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
-    color: var(--tension-color, var(--text-primary, #e0e8f0));
+    color: var(--text-primary, #e0e8f0);
     text-transform: uppercase;
     letter-spacing: 0.06em;
+    opacity: 0.75;
 }
 .tension-sublabel {
     font-size: 10px;

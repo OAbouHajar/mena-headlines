@@ -272,10 +272,16 @@ function statsPlugin() {
   let statsCacheTime = 0;
   const STATS_CACHE_TTL = 10 * 60 * 1000;
 
+  function fetchWithTimeout(url, opts = {}, ms = 10000) {
+    const ctrl = new AbortController();
+    const id = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(id));
+  }
+
   async function fetchYahooFinance(symbol) {
     try {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2d`;
-      const resp = await fetch(url, { headers: { 'User-Agent': 'yt-multi-player/1.0' } });
+      const resp = await fetchWithTimeout(url, { headers: { 'User-Agent': 'yt-multi-player/1.0' } });
       const json = await resp.json();
       const result = json?.chart?.result?.[0];
       if (!result) return null;
@@ -293,31 +299,39 @@ function statsPlugin() {
     } catch { return null; }
   }
 
-  async function fetchGDACS() {
+  // GDELT DOC API v2 — free, no auth, real-time conflict/war news
+  async function fetchConflictNews() {
     try {
-      const resp = await fetch('https://www.gdacs.org/xml/rss_6m.xml', {
-        headers: { 'User-Agent': 'yt-multi-player/1.0' },
+      const query = encodeURIComponent(
+        'war OR "armed conflict" OR airstrike OR offensive OR ceasefire OR "military operation" OR shelling OR siege'
+      );
+      const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&format=json&maxrecords=20&timespan=48h`;
+      const resp = await fetchWithTimeout(url, { headers: { 'User-Agent': 'yt-multi-player/1.0' } });
+      const json = await resp.json();
+      const articles = json?.articles ?? [];
+      return articles.map((a) => {
+        const title = (a.title || '').toLowerCase();
+        let level;
+        if (/kill|dead|death|airstrike|bomb|missile|massacre|execut|shoot/i.test(title)) level = 'red';
+        else if (/fight|clash|offensive|shelling|troops|casual|soldier|battle|assault|siege/i.test(title)) level = 'orange';
+        else level = 'green';
+        const rawDate = a.seendate || '';
+        const pubDate = rawDate
+          ? new Date(rawDate.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z')).toUTCString()
+          : '';
+        return {
+          title: a.title || '',
+          link: a.url || '',
+          pubDate,
+          level,
+          country: a.sourcecountry || '',
+          eventType: '',
+          severity: '',
+          domain: a.domain || '',
+          lat: null,
+          lon: null,
+        };
       });
-      const xml = await resp.text();
-      // Simple regex-based item extractor
-      const items = [];
-      const itemRe = /<item>([\s\S]*?)<\/item>/g;
-      let m;
-      while ((m = itemRe.exec(xml)) !== null && items.length < 10) {
-        const block = m[1];
-        const get = (tag) => { const r = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([^<]*)<\\/${tag}>`); const x = r.exec(block); return x ? (x[1] ?? x[2] ?? '').trim() : ''; };
-        const getAttr = (tag, attr) => { const r = new RegExp(`<${tag}[^>]*${attr}="([^"]*)`); const x = r.exec(block); return x ? x[1] : ''; };
-        items.push({
-          title: get('title'),
-          link: get('link'),
-          pubDate: get('pubDate'),
-          level: (get('gdacs:alertlevel') || getAttr('gdacs:alertlevel', 'value') || 'green').toLowerCase(),
-          country: get('gdacs:country'),
-          eventType: get('gdacs:eventtype'),
-          severity: get('gdacs:severity'),
-        });
-      }
-      return items;
     } catch { return []; }
   }
 
@@ -333,11 +347,11 @@ function statsPlugin() {
     const body = new URLSearchParams({
       username: email, password, grant_type: 'password', client_id: 'acled',
     });
-    const resp = await fetch('https://acleddata.com/oauth/token', {
+    const resp = await fetchWithTimeout('https://acleddata.com/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
-    });
+    }, 8000);
     if (!resp.ok) throw new Error(`ACLED token error ${resp.status}`);
     const json = await resp.json();
     acledToken = json.access_token;
@@ -354,9 +368,9 @@ function statsPlugin() {
       const sinceStr = since.toISOString().slice(0, 10);
       const todayStr = new Date().toISOString().slice(0, 10);
       const url = `https://acleddata.com/api/acled/read?_format=json&event_date=${sinceStr}|${todayStr}&event_date_where=BETWEEN&fields=fatalities&limit=500`;
-      const resp = await fetch(url, {
+      const resp = await fetchWithTimeout(url, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
+      }, 15000);
       const json = await resp.json();
       const rows = json?.data ?? [];
       const fatalities = rows.reduce((sum, d) => sum + (parseInt(d.fatalities) || 0), 0);
@@ -374,7 +388,7 @@ function statsPlugin() {
       fetchYahooFinance('GC=F'),
       fetchYahooFinance('BZ=F'),
       fetchYahooFinance('NG=F'),
-      fetchGDACS(),
+      fetchConflictNews(),
       fetchACLED(),
     ]);
     return {

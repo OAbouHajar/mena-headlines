@@ -2,19 +2,19 @@
 
 const https = require('https');
 const http = require('http');
-const { parseStringPromise } = require('xml2js');
 
 // --- Simple in-memory cache (10 minutes) ---
 let cache = null;
 let cacheTime = 0;
 const CACHE_TTL = 10 * 60 * 1000;
 
-function fetchUrl(url, method = 'GET', body = null, extraHeaders = {}) {
+function fetchUrl(url, method = 'GET', body = null, extraHeaders = {}, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const lib = url.startsWith('https') ? https : http;
     const bodyBuf = body ? Buffer.from(body) : null;
     const options = {
       method,
+      timeout: timeoutMs,
       headers: {
         'User-Agent': 'yt-multi-player/1.0',
         ...(bodyBuf ? { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': bodyBuf.length } : {}),
@@ -26,6 +26,7 @@ function fetchUrl(url, method = 'GET', body = null, extraHeaders = {}) {
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => resolve(data));
     });
+    req.on('timeout', () => { req.destroy(new Error(`Request timed out: ${url}`)); });
     req.on('error', reject);
     if (bodyBuf) req.write(bodyBuf);
     req.end();
@@ -55,28 +56,40 @@ async function fetchYahooFinance(symbol) {
   }
 }
 
-async function fetchGDACS() {
+// GDELT DOC API v2 — free, no auth, real-time war/conflict news
+async function fetchConflictNews() {
   try {
-    const raw = await fetchUrl('https://www.gdacs.org/xml/rss_6m.xml');
-    const parsed = await parseStringPromise(raw, { explicitArray: false });
-    const items = parsed?.rss?.channel?.item;
-    if (!items) return [];
-    const arr = Array.isArray(items) ? items : [items];
-    return arr.slice(0, 10).map((item) => {
-      const alertLevel = (item?.['gdacs:alertlevel'] || '').toLowerCase(); // green/orange/red
+    const query = encodeURIComponent(
+      'war OR "armed conflict" OR airstrike OR offensive OR ceasefire OR "military operation" OR shelling OR siege'
+    );
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&format=json&maxrecords=20&timespan=48h`;
+    const raw = await fetchUrl(url, 'GET', null, {}, 15000);
+    const json = JSON.parse(raw);
+    const articles = json?.articles ?? [];
+    return articles.map((a) => {
+      const title = (a.title || '').toLowerCase();
+      let level;
+      if (/kill|dead|death|airstrike|bomb|missile|massacre|execut|shoot/i.test(title)) level = 'red';
+      else if (/fight|clash|offensive|shelling|troops|casual|soldier|battle|assault|siege/i.test(title)) level = 'orange';
+      else level = 'green';
+      const rawDate = a.seendate || '';
+      const pubDate = rawDate
+        ? new Date(rawDate.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z')).toUTCString()
+        : '';
       return {
-        title: item.title || '',
-        link: item.link || '',
-        pubDate: item.pubDate || '',
-        level: alertLevel || 'green',
-        country: item?.['gdacs:country'] || '',
-        eventType: item?.['gdacs:eventtype'] || '',
-        severity: item?.['gdacs:severity']?.['_'] || item?.['gdacs:severity'] || '',
+        title: a.title || '',
+        link: a.url || '',
+        pubDate,
+        level,
+        country: a.sourcecountry || '',
+        eventType: '',
+        severity: '',
+        domain: a.domain || '',
+        lat: null,
+        lon: null,
       };
     });
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 // OAuth token cache
@@ -133,7 +146,7 @@ module.exports = async function (context, req) {
       fetchYahooFinance('GC=F'),
       fetchYahooFinance('BZ=F'),
       fetchYahooFinance('NG=F'),
-      fetchGDACS(),
+      fetchConflictNews(),
       fetchACLED(),
     ]);
 

@@ -4,73 +4,342 @@ const POLL_MS = 10 * 60 * 1000; // 10 minutes
 
 let _pollTimer = null;
 let _headerTimer = null;
+let _map = null;
+let _markers = [];
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 export function initStatsPanel() {
-  const tabBtn = document.getElementById('tabStats');
-  if (!tabBtn) return;
-
   // Always fetch in background to keep header prices fresh
   fetchAndUpdateHeader();
   _headerTimer = setInterval(fetchAndUpdateHeader, POLL_MS);
 
-  let loaded = false;
-  tabBtn.addEventListener('click', () => {
-    if (!loaded) {
-      loaded = true;
-      loadStats();
-      _pollTimer = setInterval(loadStats, POLL_MS);
-    }
-  });
+  // Panel is open by default — load immediately
+  loadStats();
+  _pollTimer = setInterval(loadStats, POLL_MS);
 
-  if (tabBtn.classList.contains('active')) {
-    loaded = true;
-    loadStats();
-    _pollTimer = setInterval(loadStats, POLL_MS);
-  }
+  // Re-validate map after first paint (panel is already visible)
+  setTimeout(() => _map?.invalidateSize(), 500);
+
+  // Close button
+  document.getElementById('statsCloseBtn')?.addEventListener('click', () => toggleStatsPanel());
+  // Flight panel close button
+  document.getElementById('flightCloseBtn')?.addEventListener('click', () => toggleFlightPanel());
+
+  // Kick off flight ticker in background (header ticker data)
+  fetchOpenSky()
+    .then(data => { _flightData = data; _startFlightTicker(); })
+    .catch(() => { /* silent — flight ticker stays blank */ });
+  _flightPollTimer = setInterval(() => {
+    fetchOpenSky().then(data => {
+      _flightData = data;
+      if (!_flightTimer) _startFlightTicker();
+      else {
+        // Refresh current slide in-place
+        const curSlide = document.getElementById(`hfcSlide${_flightActiveSlot}`);
+        _fillFlightSlide(curSlide, _FLIGHT_ITEMS[_flightIdx]);
+      }
+      const flightPanel = document.getElementById('flightPanel');
+      if (flightPanel && !flightPanel.classList.contains('closed')) _renderFlightPanel(data);
+    }).catch(() => {});
+  }, 30000);
 
   onLangChange(() => {
-    const tab = document.getElementById('tabStats');
-    if (tab && tab.classList.contains('active')) loadStats();
+    const panel = document.getElementById('statsPanel');
+    if (panel && !panel.classList.contains('closed')) loadStats();
   });
 }
 
+export function toggleStatsPanel() {
+  const panel = document.getElementById('statsPanel');
+  const btn = document.getElementById('statsBtn');
+  if (!panel) return;
+  const opening = panel.classList.contains('closed');
+  panel.classList.toggle('closed');
+  btn?.classList.toggle('active', opening);
+  if (opening) {
+    // Panel just opened — invalidate map size after transition
+    setTimeout(() => _map?.invalidateSize(), 350);
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Header price chip updater (always runs in background)
+// Header price ticker (cycles through all 4 prices every 10s with scroll-up)
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+
+const _TICKER_ITEMS = [
+  { id: 'oil',    label: '🛢 WTI',    unit: '$/bbl'   },
+  { id: 'gold',   label: '🥇 Gold',   unit: '$/oz'    },
+  { id: 'brent',  label: '⛽ Brent',  unit: '$/bbl'   },
+  { id: 'natgas', label: '🔥 NatGas', unit: '$/MMBtu' },
+];
+let _tickerData   = {};   // keyed by item.id
+let _tickerIdx    = 0;
+let _tickerTimer  = null;
+let _activeSlot   = 'A';  // which slide is currently visible
 
 async function fetchAndUpdateHeader() {
   try {
     const resp = await fetch('/api/stats');
     if (!resp.ok) return;
     const data = await resp.json();
-    updateHeaderChip('headerOil',    data.prices?.oil,    '🛢 WTI');
-    updateHeaderChip('headerGold',   data.prices?.gold,   '🥇 Gold');
-    updateHeaderChip('headerBrent',  data.prices?.brent,  '⛽ Brent');
-    updateHeaderChip('headerNatgas', data.prices?.natgas, '🔥 NatGas');
+    const p = data.prices || {};
+    _tickerData = {
+      oil:    p.oil,
+      gold:   p.gold,
+      brent:  p.brent,
+      natgas: p.natgas,
+    };
+    // If ticker not running yet, seed first slide and start
+    if (!_tickerTimer) {
+      _fillSlide(document.getElementById('hpcSlideA'), _TICKER_ITEMS[0]);
+      _tickerTimer = setInterval(_tickerAdvance, 10000);
+    }
   } catch { /* silent */ }
 }
 
-function updateHeaderChip(id, priceData, label) {
-  const el = document.getElementById(id);
-  if (!el) return;
+function _fillSlide(el, item) {
+  if (!el || !item) return;
+  const priceData = _tickerData[item.id];
+  const labelEl  = el.querySelector('.hpc-label');
   const priceEl  = el.querySelector('.hpc-price');
   const changeEl = el.querySelector('.hpc-change');
+  if (labelEl)  labelEl.textContent = item.label;
   if (!priceData) {
     if (priceEl)  priceEl.textContent  = '—';
-    if (changeEl) changeEl.textContent = '';
+    if (changeEl) { changeEl.textContent = ''; changeEl.className = 'hpc-change'; }
     return;
   }
-  const dir    = priceData.changePct >= 0 ? 'up' : 'down';
-  const arrow  = dir === 'up' ? '▲' : '▼';
-  const sign   = dir === 'up' ? '+' : '';
-  if (priceEl)  priceEl.textContent  = priceData.price.toLocaleString();
+  const dir   = priceData.changePct >= 0 ? 'up' : 'down';
+  const arrow = dir === 'up' ? '▲' : '▼';
+  const sign  = dir === 'up' ? '+' : '';
+  if (priceEl)  priceEl.textContent = priceData.price.toLocaleString();
   if (changeEl) {
     changeEl.textContent = `${arrow}${sign}${priceData.changePct.toFixed(2)}%`;
     changeEl.className   = `hpc-change ${dir}`;
+  }
+}
+
+function _tickerAdvance() {
+  _tickerIdx = (_tickerIdx + 1) % _TICKER_ITEMS.length;
+  const nextItem   = _TICKER_ITEMS[_tickerIdx];
+  const curSlotId  = `hpcSlide${_activeSlot}`;
+  const nextSlotId = `hpcSlide${_activeSlot === 'A' ? 'B' : 'A'}`;
+  const curSlide   = document.getElementById(curSlotId);
+  const nextSlide  = document.getElementById(nextSlotId);
+  if (!curSlide || !nextSlide) return;
+
+  // Prepare next slide content (hidden below)
+  nextSlide.className = 'hpc-slide hpc-below';
+  _fillSlide(nextSlide, nextItem);
+
+  // Force reflow so the initial position is applied before animation
+  void nextSlide.offsetWidth;
+
+  // Animate current out (up) and next in (from below)
+  curSlide.classList.add('hpc-exit-up');
+  nextSlide.classList.add('hpc-enter-up');
+
+  // After animation ends, reset classes
+  setTimeout(() => {
+    curSlide.className  = 'hpc-slide hpc-below';
+    nextSlide.className = 'hpc-slide';
+    _activeSlot = _activeSlot === 'A' ? 'B' : 'A';
+  }, 400);
+}
+
+// ---------------------------------------------------------------------------
+// Flight Ticker (OpenSky Network — Middle East airspace ~12–42°N, 25–65°E)
+// ---------------------------------------------------------------------------
+
+const _FLIGHT_ITEMS = [
+  { id: 'count',   label: '✈️ رحلات نشطة', unit: '' },
+  { id: 'highest', label: '⬆️ أعلى ارتفاع', unit: 'م' },
+  { id: 'fastest', label: '⚡ أسرع طائرة',  unit: 'كم/س' },
+];
+let _flightData       = null;
+let _flightIdx        = 0;
+let _flightTimer      = null;
+let _flightActiveSlot = 'A';
+let _flightPollTimer  = null;
+let _flightLoaded     = false;
+
+// Middle East countries with flag, Arabic name, and bounding box [latMin,latMax,lonMin,lonMax]
+const _ME_COUNTRIES = [
+  { flag: '🇸🇦', ar: 'السعودية',        bbox: [16.0, 32.2, 34.5, 55.7] },
+  { flag: '🇦🇪', ar: 'الإمارات',         bbox: [22.5, 26.2, 51.0, 56.5] },
+  { flag: '🇰🇼', ar: 'الكويت',            bbox: [28.3, 30.2, 46.3, 48.7] },
+  { flag: '🇶🇦', ar: 'قطر',              bbox: [24.4, 26.4, 50.5, 51.8] },
+  { flag: '🇧🇭', ar: 'البحرين',           bbox: [25.5, 26.5, 50.2, 50.8] },
+  { flag: '🇴🇲', ar: 'عُمان',             bbox: [16.5, 26.5, 51.5, 60.0] },
+  { flag: '🇾🇪', ar: 'اليمن',             bbox: [12.0, 19.0, 42.0, 54.0] },
+  { flag: '🇮🇶', ar: 'العراق',            bbox: [29.0, 38.0, 38.5, 49.0] },
+  { flag: '🇮🇷', ar: 'إيران',             bbox: [25.0, 40.0, 44.0, 64.0] },
+  { flag: '🇸🇾', ar: 'سوريا',             bbox: [32.2, 37.5, 35.5, 42.5] },
+  { flag: '🇱🇧', ar: 'لبنان',             bbox: [33.0, 34.7, 35.0, 36.7] },
+  { flag: '🇯🇴', ar: 'الأردن',            bbox: [29.0, 33.5, 34.5, 39.5] },
+  { flag: '🇵🇸', ar: 'فلسطين',           bbox: [29.5, 33.5, 34.2, 35.9] },
+  { flag: '🇪🇬', ar: 'مصر',              bbox: [22.0, 31.7, 24.5, 37.3] },
+  { flag: '🇹🇷', ar: 'تركيا',            bbox: [35.5, 42.2, 26.0, 45.0] },
+  { flag: '🇮🇱', ar: 'إسرائيل',          bbox: [29.5, 33.5, 34.2, 35.9] },
+  { flag: '🇸🇩', ar: 'السودان',           bbox: [8.5,  22.2, 23.5, 38.7] },
+  { flag: '🇱🇾', ar: 'ليبيا',            bbox: [19.5, 33.3, 9.0,  25.5] },
+  { flag: '🇵🇰', ar: 'باكستان',           bbox: [23.5, 37.5, 60.5, 77.5] },
+  { flag: '🇦🇫', ar: 'أفغانستان',         bbox: [29.0, 38.5, 60.5, 75.0] },
+];
+
+async function fetchOpenSky() {
+  const resp = await fetch(
+    'https://opensky-network.org/api/states/all?lamin=8&lamax=42&lomin=9&lomax=77'
+  );
+  if (!resp.ok) throw new Error(`OpenSky HTTP ${resp.status}`);
+  const json = await resp.json();
+  const states = (json.states || []).filter(s => !s[8]); // exclude on-ground
+  const airborne = states.filter(s => s[5] != null && s[6] != null);
+
+  // Count planes per Middle East country using bounding boxes
+  const countryCounts = {};
+  for (const s of airborne) {
+    const lat = s[5], lon = s[6];
+    for (const c of _ME_COUNTRIES) {
+      const [latMin, latMax, lonMin, lonMax] = c.bbox;
+      if (lat >= latMin && lat <= latMax && lon >= lonMin && lon <= lonMax) {
+        countryCounts[c.ar] = (countryCounts[c.ar] || 0) + 1;
+        break; // assign to first matching country
+      }
+    }
+  }
+
+  // Build full country list (all ME countries, even 0)
+  const countries = _ME_COUNTRIES.map(c => ({
+    flag: c.flag,
+    ar:   c.ar,
+    n:    countryCounts[c.ar] || 0,
+  })).sort((a, b) => b.n - a.n);
+
+  const count   = airborne.length;
+  const highest = airborne.length ? Math.round(Math.max(...airborne.map(s => s[7] || 0))) : 0;
+  const fastest = airborne.length ? Math.round(Math.max(...airborne.map(s => s[9] || 0)) * 3.6) : 0;
+
+  return { count, highest, fastest, countries };
+}
+
+function _fillFlightSlide(el, item) {
+  if (!el || !item || !_flightData) return;
+  const labelEl  = el.querySelector('.hpc-label');
+  const priceEl  = el.querySelector('.hpc-price');
+  const changeEl = el.querySelector('.hpc-change');
+  if (labelEl)  labelEl.textContent = item.label;
+  const val = _flightData[item.id];
+  if (priceEl)  priceEl.textContent = val != null ? val.toLocaleString() : '—';
+  if (changeEl) { changeEl.textContent = item.unit || ''; changeEl.className = 'hpc-change'; }
+}
+
+function _startFlightTicker() {
+  if (!_flightData) return;
+  _fillFlightSlide(document.getElementById('hfcSlideA'), _FLIGHT_ITEMS[0]);
+  if (!_flightTimer) {
+    _flightTimer = setInterval(_flightTickerAdvance, 8000);
+  }
+}
+
+function _flightTickerAdvance() {
+  _flightIdx = (_flightIdx + 1) % _FLIGHT_ITEMS.length;
+  const nextItem   = _FLIGHT_ITEMS[_flightIdx];
+  const curSlotId  = `hfcSlide${_flightActiveSlot}`;
+  const nextSlotId = `hfcSlide${_flightActiveSlot === 'A' ? 'B' : 'A'}`;
+  const curSlide   = document.getElementById(curSlotId);
+  const nextSlide  = document.getElementById(nextSlotId);
+  if (!curSlide || !nextSlide) return;
+
+  nextSlide.className = 'hpc-slide hpc-below';
+  _fillFlightSlide(nextSlide, nextItem);
+  void nextSlide.offsetWidth;
+  curSlide.classList.add('hpc-exit-up');
+  nextSlide.classList.add('hpc-enter-up');
+
+  setTimeout(() => {
+    curSlide.className  = 'hpc-slide hpc-below';
+    nextSlide.className = 'hpc-slide';
+    _flightActiveSlot   = _flightActiveSlot === 'A' ? 'B' : 'A';
+  }, 400);
+}
+
+function _renderFlightPanel(data) {
+  const body = document.getElementById('flightBody');
+  if (!body) return;
+  if (!data) {
+    body.innerHTML = `<div class="stats-error">تعذّر تحميل بيانات الرحلات</div>`;
+    return;
+  }
+
+  const maxN = (data.countries[0]?.n) || 1;
+  const countriesHTML = data.countries.map(c => {
+    const barW = c.n > 0 ? Math.max(4, Math.round(c.n / maxN * 100)) : 0;
+    return `
+      <div class="flight-country-row${c.n === 0 ? ' flt-zero' : ''}">
+        <span class="flight-country-flag">${c.flag}</span>
+        <span class="flight-country-name">${c.ar}</span>
+        <span class="flight-country-bar-wrap">
+          <span class="flight-country-bar" style="width:${barW}%"></span>
+        </span>
+        <span class="flight-country-count">${c.n > 0 ? c.n : '—'}</span>
+      </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="stats-section">
+      <div class="stat-card stat-card-hero-full">
+        <div class="stat-hero-value" style="font-size:2rem">${data.count}</div>
+        <div class="stat-card-label">✈️ رحلة نشطة في المنطقة</div>
+      </div>
+    </div>
+    <div class="stats-section">
+      <div class="stats-section-title">الأجواء حسب الدولة</div>
+      <div class="flight-countries">${countriesHTML}</div>
+    </div>
+    <div class="stats-section">
+      <div class="stats-cards-row">
+        <div class="stat-card">
+          <div class="stat-card-label">⬆️ أعلى ارتفاع</div>
+          <div class="stat-price">${data.highest.toLocaleString()} <span class="stat-unit">م</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">⚡ أسرع طائرة</div>
+          <div class="stat-price">${data.fastest.toLocaleString()} <span class="stat-unit">كم/س</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="flight-update-time">آخر تحديث: ${new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</div>
+  `;
+}
+
+export function toggleFlightPanel() {
+  const panel = document.getElementById('flightPanel');
+  const btn   = document.getElementById('flightBtn');
+  if (!panel) return;
+  const opening = panel.classList.contains('closed');
+  panel.classList.toggle('closed');
+  btn?.classList.toggle('active', opening);
+  if (opening) {
+    if (!_flightLoaded) {
+      _flightLoaded = true;
+      fetchOpenSky()
+        .then(data => {
+          _flightData = data;
+          if (!_flightTimer) _startFlightTicker();
+          _renderFlightPanel(data);
+        })
+        .catch(() => {
+          const body = document.getElementById('flightBody');
+          if (body) body.innerHTML = `<div class="stats-error">تعذّر الاتصال بـ OpenSky</div>`;
+        });
+    } else if (_flightData) {
+      _renderFlightPanel(_flightData);
+    }
   }
 }
 
@@ -127,6 +396,54 @@ function renderError(container) {
   container.innerHTML = `<div class="stats-error">${t('statsNoData')}</div>`;
 }
 
+// Seismic tension score: based on USGS alert levels + magnitude distribution
+function renderTensionCard(alerts) {
+  if (!alerts || alerts.length === 0) {
+    return `<div class="tension-card" style="--tension-color:#4caf7d">
+      <div class="tension-top">
+        <div class="tension-score">0</div>
+        <div class="tension-right">
+          <div class="tension-label">${t('tensionTitle')}</div>
+          <div class="tension-sublabel">${t('tensionLow')}</div>
+        </div>
+      </div>
+      <div class="tension-bar-track"><div class="tension-bar-fill" style="width:0%"></div></div>
+      <div class="tension-note">${t('tensionNote')}</div>
+    </div>`;
+  }
+  const red    = alerts.filter(a => a.level === 'red').length;
+  const orange = alerts.filter(a => a.level === 'orange').length;
+  const green  = alerts.filter(a => a.level === 'green').length;
+
+  const raw = Math.min(100, red * 25 + orange * 8 + green * 1);
+  const score = Math.round(raw);
+  let levelKey, color;
+  if (score >= 70)      { levelKey = 'tensionCritical'; color = '#c94040'; }
+  else if (score >= 45) { levelKey = 'tensionElevated'; color = '#e07b39'; }
+  else if (score >= 20) { levelKey = 'tensionModerate'; color = '#e8a838'; }
+  else                  { levelKey = 'tensionLow';      color = '#4caf7d'; }
+
+  return `
+    <div class="tension-card" style="--tension-color:${color}">
+      <div class="tension-top">
+        <div class="tension-score">${score}</div>
+        <div class="tension-right">
+          <div class="tension-label">${t('tensionTitle')}</div>
+          <div class="tension-sublabel">${t(levelKey)}</div>
+        </div>
+      </div>
+      <div class="tension-bar-track">
+        <div class="tension-bar-fill" style="width:${score}%;background:${color}"></div>
+      </div>
+      <div class="tension-breakdown">
+        <span class="tension-pill tension-pill-red">${red} ${t('statsAlertRed')}</span>
+        <span class="tension-pill tension-pill-orange">${orange} ${t('statsAlertOrange')}</span>
+        <span class="tension-pill tension-pill-green">${green} ${t('statsAlertGreen')}</span>
+      </div>
+      <div class="tension-note">${t('tensionNote')}</div>
+    </div>`;
+}
+
 function renderStats(container, data) {
   const { prices, alerts, conflicts } = data;
 
@@ -147,17 +464,17 @@ function renderStats(container, data) {
       </div>
     </div>
 
-    <!-- Active Conflicts -->
+    <!-- Active Conflicts (only when ACLED data is available) -->
+    ${conflicts?.available ? `
     <div class="stats-section">
       <div class="stats-section-title">${t('statsConflicts')}</div>
       <div class="stats-cards-row">
-        ${heroCard('statsEvents',     conflicts?.events     ?? '—', conflicts?.available)}
-        ${heroCard('statsFatalities', conflicts?.fatalities ?? '—', conflicts?.available)}
+        ${heroCard('statsEvents',     conflicts.events,     true)}
+        ${heroCard('statsFatalities', conflicts.fatalities, true)}
       </div>
-      ${!conflicts?.available ? `<p class="stats-acled-note">${t('statsAcledNote')}</p>` : ''}
-    </div>
+    </div>` : ''}
 
-    <!-- GDACS Disaster Alerts -->
+    <!-- Seismic Disaster Alerts -->
     <div class="stats-section">
       <div class="stats-section-title">${t('statsAlerts')}</div>
       <div id="statsAlertList">
@@ -165,6 +482,9 @@ function renderStats(container, data) {
       </div>
     </div>
   `;
+
+  // Plot active conflict zones on the Leaflet map
+  initMap();
 }
 
 function priceCard(labelKey, icon, priceData, unit) {
@@ -201,12 +521,12 @@ function renderAlerts(alerts) {
   }
   return alerts.map((a) => {
     const levelLabel = a.level === 'red' ? t('statsAlertRed') : a.level === 'orange' ? t('statsAlertOrange') : t('statsAlertGreen');
-    const dateStr = a.pubDate ? new Date(a.pubDate).toLocaleDateString(lang() === 'ar' ? 'ar-SA' : 'en-GB', { day: 'numeric', month: 'short' }) : '';
+    const meta = a.domain || (a.pubDate ? new Date(a.pubDate).toLocaleDateString(lang() === 'ar' ? 'ar-SA' : 'en-GB', { day: 'numeric', month: 'short' }) : '');
     return `
       <div class="alert-item">
-        <span class="alert-badge alert-badge-${a.level}">${a.eventType || levelLabel}</span>
+        <span class="alert-badge alert-badge-${a.level}">${levelLabel}</span>
         <span class="alert-text">${a.title}</span>
-        <span class="alert-date">${dateStr}</span>
+        <span class="alert-date">${meta}</span>
       </div>`;
   }).join('');
 }
@@ -215,7 +535,25 @@ function renderAlerts(alerts) {
 // Leaflet map (conflict / disaster markers)
 // ---------------------------------------------------------------------------
 
-function initMap(alerts) {
+// Active conflict zones — hardcoded known ongoing conflicts with coordinates
+const CONFLICT_ZONES = [
+  { nameAr: 'غزة / فلسطين', nameEn: 'Gaza / Palestine', lat: 31.35, lon: 34.31, level: 'red' },
+  { nameAr: 'الضفة الغربية', nameEn: 'West Bank', lat: 31.95, lon: 35.30, level: 'red' },
+  { nameAr: 'أوكرانيا', nameEn: 'Ukraine', lat: 48.38, lon: 31.17, level: 'red' },
+  { nameAr: 'اليمن', nameEn: 'Yemen', lat: 15.55, lon: 48.52, level: 'red' },
+  { nameAr: 'السودان', nameEn: 'Sudan', lat: 15.50, lon: 32.56, level: 'red' },
+  { nameAr: 'سوريا', nameEn: 'Syria', lat: 34.80, lon: 38.99, level: 'orange' },
+  { nameAr: 'لبنان', nameEn: 'Lebanon', lat: 33.85, lon: 35.86, level: 'orange' },
+  { nameAr: 'ميانمار', nameEn: 'Myanmar', lat: 19.76, lon: 96.08, level: 'orange' },
+  { nameAr: 'الكونغو', nameEn: 'DR Congo', lat: -4.04, lon: 21.76, level: 'orange' },
+  { nameAr: 'الصومال', nameEn: 'Somalia', lat: 5.15, lon: 46.20, level: 'orange' },
+  { nameAr: 'الساحل', nameEn: 'Sahel / Mali', lat: 17.57, lon: -3.99, level: 'orange' },
+  { nameAr: 'إثيوبيا', nameEn: 'Ethiopia', lat: 9.15, lon: 40.49, level: 'orange' },
+  { nameAr: 'هايتي', nameEn: 'Haiti', lat: 18.97, lon: -72.29, level: 'orange' },
+  { nameAr: 'ليبيا', nameEn: 'Libya', lat: 26.34, lon: 17.23, level: 'green' },
+];
+
+function initMap() {
   const el = document.getElementById('statsConflictMap');
   if (!el) return;
 
@@ -231,24 +569,34 @@ function initMap(alerts) {
       zoom: 2,
       scrollWheelZoom: false,
       attributionControl: false,
-      zoomControl: true,
+      zoomControl: false,
     });
     window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 18,
+      crossOrigin: true,
     }).addTo(_map);
+    setTimeout(() => _map.invalidateSize(), 250);
+    setTimeout(() => _map.invalidateSize(), 800);
   } else {
-    // Just re-use existing map instance
     setTimeout(() => _map.invalidateSize(), 100);
   }
 
-  if (!alerts) return;
-
-  // GDACS events come with bounding boxes but no lat/lon directly in RSS.
-  // Use approximate centre coords extracted from GDACS event links.
-  // e.g. https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1400614 — no coords in RSS by default.
-  // We render red circles for "red", orange for "orange", green for "green" using a lookup approach.
-  // Since GDACS RSS doesn't always include lat/lon, we skip mapping for events without data.
-  // Future: use full GeoJSON endpoint from GDACS.
+  const isAr = lang() === 'ar';
+  const colorMap = { red: '#c94040', orange: '#e8a838', green: '#4caf7d' };
+  for (const z of CONFLICT_ZONES) {
+    const color  = colorMap[z.level] || '#4caf7d';
+    const radius = z.level === 'red' ? 8 : z.level === 'orange' ? 6 : 4;
+    const label  = isAr ? z.nameAr : z.nameEn;
+    const marker = window.L.circleMarker([z.lat, z.lon], {
+      radius,
+      color,
+      fillColor: color,
+      fillOpacity: 0.80,
+      weight: 1.5,
+    }).bindTooltip(label, { direction: 'top', className: 'gdacs-tooltip' });
+    marker.addTo(_map);
+    _markers.push(marker);
+  }
 }
 
 // ---------------------------------------------------------------------------
