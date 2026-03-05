@@ -1,24 +1,24 @@
 // api/flights/index.js — uses global fetch (Node 18+), credentials hardcoded as fallback
 const _ME_COUNTRIES = [
-  { flag: '🇸🇦', ar: 'السعودية',   bbox: [16.0, 32.2, 34.5, 55.7] },
-  { flag: '🇦🇪', ar: 'الإمارات',    bbox: [22.5, 26.2, 51.0, 56.5] },
-  { flag: '🇰🇼', ar: 'الكويت',      bbox: [28.3, 30.2, 46.3, 48.7] },
-  { flag: '🇶🇦', ar: 'قطر',         bbox: [24.4, 26.4, 50.5, 51.8] },
-  { flag: '🇧🇭', ar: 'البحرين',     bbox: [25.5, 26.5, 50.2, 50.8] },
-  { flag: '🇴🇲', ar: 'عُمان',       bbox: [16.5, 26.5, 51.5, 60.0] },
-  { flag: '🇾🇪', ar: 'اليمن',       bbox: [12.0, 19.0, 42.0, 54.0] },
-  { flag: '🇮🇶', ar: 'العراق',      bbox: [29.0, 38.0, 38.5, 49.0] },
-  { flag: '🇮🇷', ar: 'إيران',       bbox: [25.0, 40.0, 44.0, 64.0] },
-  { flag: '🇸🇾', ar: 'سوريا',       bbox: [32.2, 37.5, 35.5, 42.5] },
-  { flag: '🇱🇧', ar: 'لبنان',       bbox: [33.0, 34.7, 35.0, 36.7] },
-  { flag: '🇯🇴', ar: 'الأردن',      bbox: [29.0, 33.5, 34.5, 39.5] },
-  { flag: '🇵🇸', ar: 'فلسطين',      bbox: [29.5, 33.5, 34.2, 35.9] },
-  { flag: '🇪🇬', ar: 'مصر',         bbox: [22.0, 31.7, 24.5, 37.3] },
-  { flag: '🇹🇷', ar: 'تركيا',       bbox: [35.5, 42.2, 26.0, 45.0] },
-  { flag: '🇸🇩', ar: 'السودان',     bbox: [8.5,  22.2, 23.5, 38.7] },
-  { flag: '🇱🇾', ar: 'ليبيا',       bbox: [19.5, 33.3,  9.0, 25.5] },
-  { flag: '🇵🇰', ar: 'باكستان',     bbox: [23.5, 37.5, 60.5, 77.5] },
-  { flag: '🇦🇫', ar: 'أفغانستان',   bbox: [29.0, 38.5, 60.5, 75.0] },
+  { flag: '🇸🇦', ar: 'السعودية',   en: 'Saudi Arabia', bbox: [16.0, 32.2, 34.5, 55.7] },
+  { flag: '🇦🇪', ar: 'الإمارات',    en: 'UAE',          bbox: [22.5, 26.2, 51.0, 56.5] },
+  { flag: '🇰🇼', ar: 'الكويت',      en: 'Kuwait',       bbox: [28.3, 30.2, 46.3, 48.7] },
+  { flag: '🇶🇦', ar: 'قطر',         en: 'Qatar',        bbox: [24.4, 26.4, 50.5, 51.8] },
+  { flag: '🇧🇭', ar: 'البحرين',     en: 'Bahrain',      bbox: [25.5, 26.5, 50.2, 50.8] },
+  { flag: '🇴🇲', ar: 'عُمان',       en: 'Oman',         bbox: [16.5, 26.5, 51.5, 60.0] },
+  { flag: '🇾🇪', ar: 'اليمن',       en: 'Yemen',        bbox: [12.0, 19.0, 42.0, 54.0] },
+  { flag: '🇮🇶', ar: 'العراق',      en: 'Iraq',         bbox: [29.0, 38.0, 38.5, 49.0] },
+  { flag: '🇮🇷', ar: 'إيران',       en: 'Iran',         bbox: [25.0, 40.0, 44.0, 64.0] },
+  { flag: '🇸🇾', ar: 'سوريا',       en: 'Syria',        bbox: [32.2, 37.5, 35.5, 42.5] },
+  { flag: '🇱🇧', ar: 'لبنان',       en: 'Lebanon',      bbox: [33.0, 34.7, 35.0, 36.7] },
+  { flag: '🇯🇴', ar: 'الأردن',      en: 'Jordan',       bbox: [29.0, 33.5, 34.5, 39.5] },
+  { flag: '🇵🇸', ar: 'فلسطين',      en: 'Palestine',    bbox: [29.5, 33.5, 34.2, 35.9] },
+  { flag: '🇪🇬', ar: 'مصر',         en: 'Egypt',        bbox: [22.0, 31.7, 24.5, 37.3] },
+  { flag: '🇹🇷', ar: 'تركيا',       en: 'Turkey',       bbox: [35.5, 42.2, 26.0, 45.0] },
+  { flag: '🇸🇩', ar: 'السودان',     en: 'Sudan',        bbox: [8.5,  22.2, 23.5, 38.7] },
+  { flag: '🇱🇾', ar: 'ليبيا',       en: 'Libya',        bbox: [19.5, 33.3,  9.0, 25.5] },
+  { flag: '🇵🇰', ar: 'باكستان',     en: 'Pakistan',     bbox: [23.5, 37.5, 60.5, 77.5] },
+  { flag: '🇦🇫', ar: 'أفغانستان',   en: 'Afghanistan',  bbox: [29.0, 38.5, 60.5, 75.0] },
 ];
 
 // Credentials — set via environment variables (see .env.example)
@@ -140,7 +140,7 @@ module.exports = async function (context, req) {
     }
 
     const countries = _ME_COUNTRIES
-      .map(c => ({ flag: c.flag, ar: c.ar, n: countryCounts[c.ar] || 0 }))
+      .map(c => ({ flag: c.flag, ar: c.ar, en: c.en, n: countryCounts[c.ar] || 0 }))
       .sort((a, b) => b.n - a.n);
 
     const count   = airborne.length;

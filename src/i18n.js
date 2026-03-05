@@ -119,6 +119,33 @@ const translations = {
     tensionElevated: 'Elevated',
     tensionCritical: 'Critical',
     tensionNote: 'Based on global armed conflict news. Indicative only.',
+    // Modal resolve
+    youtubeUrl: 'YouTube URL',
+    resolve: 'Resolve',
+    resolveHint: 'Paste a channel link — name, handle, ID & logo will be filled automatically',
+    resolveSuccess: 'Channel info resolved!',
+    resolveErrorId: 'Could not resolve Channel ID — check the URL',
+    resolveError: 'Failed to fetch channel info',
+    resolving: '…',
+    // Grid
+    setStreamId: 'Set stream ID',
+    liveTag: 'Live',
+    // Flight panel
+    flightActiveLabel: 'active flights in region',
+    flightByCountry: 'Airspace by Country',
+    flightLastUpdate: 'Last update',
+    flightActiveCount: 'active flight in region',
+    flightLoadError: 'Failed to connect to OpenSky',
+    flightDataError: 'Failed to load flight data',
+    // Ticker / Updates
+    officialStatements: 'Official Statements',
+    loadingFeeds: 'Loading official feeds…',
+    latestNews: 'Latest News',
+    justNow: 'just now',
+    minutesAgo: (m) => `${m}m ago`,
+    hoursAgo: (h) => `${h}h ago`,
+    // Stats
+    topStocks: 'Top 10 Stocks',
   },
   ar: {
     appTitle: 'Middle East Live',
@@ -229,6 +256,33 @@ const translations = {
     tensionElevated: 'مرتفع',
     tensionCritical: 'حرج',
     tensionNote: 'مبني على أخبار النزاعات المسلحة العالمية. مؤشر استرشادي.',
+    // Modal resolve
+    youtubeUrl: 'رابط يوتيوب',
+    resolve: 'بحث',
+    resolveHint: 'الصق رابط القناة — سيتم ملء الاسم والمعرف والشعار تلقائياً',
+    resolveSuccess: 'تم حل معلومات القناة!',
+    resolveErrorId: 'تعذّر حل معرّف القناة — تحقق من الرابط',
+    resolveError: 'فشل في جلب معلومات القناة',
+    resolving: '…',
+    // Grid
+    setStreamId: 'تعيين معرّف البث',
+    liveTag: 'مباشر',
+    // Flight panel
+    flightActiveLabel: 'رحلة نشطة في المنطقة',
+    flightByCountry: 'الأجواء حسب الدولة',
+    flightLastUpdate: 'آخر تحديث',
+    flightActiveCount: 'رحلة نشطة في المنطقة',
+    flightLoadError: 'تعذّر الاتصال بـ OpenSky',
+    flightDataError: 'تعذّر تحميل بيانات الرحلات',
+    // Ticker / Updates
+    officialStatements: 'بيانات رسمية',
+    loadingFeeds: 'جاري تحميل البيانات الرسمية…',
+    latestNews: 'آخر الأخبار',
+    justNow: 'الآن',
+    minutesAgo: (m) => `${m}د`,
+    hoursAgo: (h) => `${h}س`,
+    // Stats
+    topStocks: 'أفضل 10 أسهم',
   },
 };
 
