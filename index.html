@@ -161,19 +161,6 @@
 
         </aside>
 
-        <!-- Standalone Flight Radar Panel -->
-        <aside class="stats-standalone flight-standalone closed" id="flightPanel" aria-label="Flight Radar Panel">
-            <div class="stats-panel-header">
-                <h3 data-i18n="flightPanel">رادار جوي ✈️</h3>
-                <button class="btn-icon-sm stats-close-btn" id="flightCloseBtn" title="Close">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <div class="stats-body flight-body" id="flightBody">
-                <div class="stats-loading" data-i18n="statsLoading">Loading data…</div>
-            </div>
-        </aside>
-
         <!-- Standalone Stats Panel -->
         <aside class="stats-standalone" id="statsPanel" aria-label="Statistics Panel">
             <div class="stats-panel-header">
@@ -203,6 +190,19 @@
             </div>
             <!-- Scrollable widgets -->
             <div class="stats-body" id="statsBody">
+                <div class="stats-loading" data-i18n="statsLoading">Loading data…</div>
+            </div>
+        </aside>
+
+        <!-- Standalone Flight Radar Panel -->
+        <aside class="stats-standalone flight-standalone" id="flightPanel" aria-label="Flight Radar Panel">
+            <div class="stats-panel-header">
+                <h3 data-i18n="flightPanel">حالة الطيران ✈️</h3>
+                <button class="btn-icon-sm stats-close-btn" id="flightCloseBtn" title="Close">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="stats-body flight-body" id="flightBody">
                 <div class="stats-loading" data-i18n="statsLoading">Loading data…</div>
             </div>
         </aside>
