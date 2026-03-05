@@ -2,6 +2,9 @@
 
 A real-time intelligence dashboard that streams multiple Middle East news channels, live flight data, market tickers, conflict statistics, and AI-powered geopolitical analysis — all in one screen.
 
+<img width="1909" height="1055" alt="image" src="https://github.com/user-attachments/assets/a2b6f7f1-84fa-4fa2-a6c7-b02befe3c299" />
+
+
 ## Features
 
 - **Multi-Channel Live Viewer** — Watch multiple YouTube live news streams simultaneously (Al Jazeera, Al Arabiya, Sky News Arabia, and more)
