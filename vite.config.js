@@ -100,11 +100,11 @@ function resolveChannelPlugin() {
  * Dev-only middleware — /api/intelligence
  * Fetches RSS feeds server-side, then calls Azure OpenAI using the official SDK.
  */
-function intelligencePlugin() {
-  const API_KEY     = process.env.AZURE_OPENAI_API_KEY;
+function intelligencePlugin(env) {
+  const API_KEY     = env.AZURE_OPENAI_API_KEY;
   const API_VERSION = '2024-12-01-preview';
-  const ENDPOINT    = process.env.AZURE_OPENAI_ENDPOINT;
-  const MODEL_NAME  = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+  const ENDPOINT    = env.AZURE_OPENAI_ENDPOINT;
+  const MODEL_NAME  = env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
   const DEPLOYMENT  = MODEL_NAME;
 
   // RSS feeds — English (politics & world affairs only)
@@ -804,7 +804,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     root: '.',
-    plugins: [presencePlugin(), resolveChannelPlugin(), intelligencePlugin(), statsPlugin(), flightsPlugin(env), tweetsPlugin()],
+    plugins: [presencePlugin(), resolveChannelPlugin(), intelligencePlugin(env), statsPlugin(), flightsPlugin(env), tweetsPlugin()],
     build: {
       outDir: 'dist',
       emptyOutDir: true,

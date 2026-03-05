@@ -1,4 +1,4 @@
-import { t, lang, onLangChange } from './i18n.js';
+import { t, lang, isRTL, onLangChange } from './i18n.js';
 
 const POLL_MS = 600000; // 10 minutes
 
@@ -39,7 +39,7 @@ export function initStatsPanel() {
     })
     .catch(() => {
       const body = document.getElementById('flightBody');
-      if (body) body.innerHTML = `<div class="stats-error">تعذّر الاتصال بـ OpenSky</div>`;
+      if (body) body.innerHTML = `<div class="stats-error">${t('flightLoadError')}</div>`;
     });
   _flightPollTimer = setInterval(() => {
     fetchOpenSky().then(data => {
@@ -165,7 +165,7 @@ function _tickerAdvance() {
 // ---------------------------------------------------------------------------
 
 const _FLIGHT_ITEMS = [
-  { id: 'count',   label: '✈️ رحلات نشطة', unit: '' },
+  { id: 'count',   labelKey: 'flightBtn', unit: '' },
 ];
 let _flightData       = null;
 let _flightIdx        = 0;
@@ -209,17 +209,18 @@ function _renderFlightPanel(data) {
   const body = document.getElementById('flightBody');
   if (!body) return;
   if (!data) {
-    body.innerHTML = `<div class="stats-error">تعذّر تحميل بيانات الرحلات</div>`;
+    body.innerHTML = `<div class="stats-error">${t('flightDataError')}</div>`;
     return;
   }
 
   const maxN = (data.countries[0]?.n) || 1;
+  const isAr = lang() === 'ar';
   const countriesHTML = data.countries.map(c => {
     const barW = c.n > 0 ? Math.max(4, Math.round(c.n / maxN * 100)) : 0;
     return `
       <div class="flight-country-row${c.n === 0 ? ' flt-zero' : ''}">
         <span class="flight-country-flag">${c.flag}</span>
-        <span class="flight-country-name">${c.ar}</span>
+        <span class="flight-country-name">${isAr ? c.ar : (c.en || c.ar)}</span>
         <span class="flight-country-bar-wrap">
           <span class="flight-country-bar" style="width:${barW}%"></span>
         </span>
@@ -231,11 +232,11 @@ function _renderFlightPanel(data) {
     <div class="stats-section">
       <div class="stat-card stat-card-hero-full">
         <div class="stat-hero-value" style="font-size:2rem">${data.count}</div>
-        <div class="stat-card-label">✈️ رحلة نشطة في المنطقة</div>
+        <div class="stat-card-label">✈️ ${t('flightActiveCount')}</div>
       </div>
     </div>
     <div class="stats-section">
-      <div class="stats-section-title">الأجواء حسب الدولة</div>
+      <div class="stats-section-title">${t('flightByCountry')}</div>
       <div class="flight-countries">${countriesHTML}</div>
     </div>
     <div class="stats-section">
@@ -243,7 +244,7 @@ function _renderFlightPanel(data) {
         <!-- Stats removed by request -->
       </div>
     </div>
-    <div class="flight-update-time">آخر تحديث: ${new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</div>
+    <div class="flight-update-time">${t('flightLastUpdate')}: ${new Date().toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</div>
   `;
 }
 
@@ -265,7 +266,7 @@ export function toggleFlightPanel() {
         })
         .catch(() => {
           const body = document.getElementById('flightBody');
-          if (body) body.innerHTML = `<div class="stats-error">تعذّر الاتصال بـ OpenSky</div>`;
+          if (body) body.innerHTML = `<div class="stats-error">${t('flightLoadError')}</div>`;
         });
     } else if (_flightData) {
       _renderFlightPanel(_flightData);
@@ -348,7 +349,7 @@ function renderStats(container, data) {
     <!-- Top 10 Stocks — auto-scroll ticker -->
     ${stocks?.length ? `
     <div class="stats-section">
-      <div class="stats-section-title">📈 Top 10 Stocks</div>
+      <div class="stats-section-title">📈 ${t('topStocks')}</div>
       <div class="stocks-ticker-wrap">
         <div class="stocks-ticker-inner">
           ${[...stocks, ...stocks].map(s => {

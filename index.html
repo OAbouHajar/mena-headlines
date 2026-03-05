@@ -59,12 +59,12 @@
             <div class="header-ticker-divider"></div>
             <div class="header-flight-ticker" id="headerFlightTicker">
                 <div class="hpc-slide" id="hfcSlideA">
-                    <span class="hpc-label">✈️ رحلات</span>
+                    <span class="hpc-label">✈️ Flights</span>
                     <span class="hpc-price">—</span>
                     <span class="hpc-change"></span>
                 </div>
                 <div class="hpc-slide hpc-below" id="hfcSlideB">
-                    <span class="hpc-label">✈️ رحلات</span>
+                    <span class="hpc-label">✈️ Flights</span>
                     <span class="hpc-price">—</span>
                     <span class="hpc-change"></span>
                 </div>
@@ -101,7 +101,7 @@
                   <!-- Stem -->
                   <path d="M10 18.5 Q12 20 14 18.5"/>
                 </svg>
-                <span>AI Intelligence</span>
+                <span data-i18n="intelBtn">AI Intelligence</span>
             </button>
             <a class="btn-icon" href="https://www.facebook.com/oabouhajar/" target="_blank" rel="noopener" title="Facebook">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
@@ -129,7 +129,7 @@
                 <span id="liveUsersCount">1</span>
             </div>
             <!-- langToggleBtn hidden until EN content is ready -->
-            <button class="btn btn-secondary btn-sm" id="langToggleBtn" style="display:none">
+            <button class="btn btn-secondary btn-sm" id="langToggleBtn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
                 <span data-i18n="langLabel">EN</span>
             </button>
@@ -238,12 +238,12 @@
             </div>
             <div class="modal-body">
                 <div class="form-field">
-                    <label for="modalUrl">YouTube URL</label>
+                    <label for="modalUrl" data-i18n="youtubeUrl">YouTube URL</label>
                     <div class="url-input-row">
                         <input type="text" id="modalUrl" placeholder="https://www.youtube.com/@ChannelName">
-                        <button class="btn btn-primary btn-sm" id="modalResolveBtn" type="button">Resolve</button>
+                        <button class="btn btn-primary btn-sm" id="modalResolveBtn" type="button" data-i18n="resolve">Resolve</button>
                     </div>
-                    <span class="form-hint">Paste a channel link — name, handle, ID &amp; logo will be filled automatically</span>
+                    <span class="form-hint" data-i18n="resolveHint">Paste a channel link — name, handle, ID &amp; logo will be filled automatically</span>
                 </div>
                 <hr class="modal-divider">
                 <div class="form-field">

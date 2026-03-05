@@ -1,4 +1,4 @@
-import { lang, onLangChange } from './i18n.js';
+import { lang, t, onLangChange } from './i18n.js';
 
 // Group metadata for the X/tweets section
 const TWEET_GROUPS = [
@@ -147,7 +147,7 @@ export class NewsTicker {
             // Skeleton while loading
             tweetsHTML = `
                 <div class="news-perspective-block">
-                    <div class="news-perspective-header">🗣️ Official Statements</div>
+                    <div class="news-perspective-header">🗣️ ${t('officialStatements')}</div>
                     ${[1, 2, 3].map(() => `
                         <div class="news-source-group">
                             <div class="news-src-skeleton-label"></div>
@@ -164,7 +164,7 @@ export class NewsTicker {
             }
             tweetsHTML = `
                 <div class="news-perspective-block">
-                    <div class="news-perspective-header">🗣️ Official Statements</div>
+                    <div class="news-perspective-header">🗣️ ${t('officialStatements')}</div>
                     ${TWEET_GROUPS.map(g => {
                         const accs = grouped[g.id] || [];
                         if (!accs.length) return '';
@@ -188,14 +188,14 @@ export class NewsTicker {
         } else {
             tweetsHTML = `
                 <div class="news-perspective-block">
-                    <div class="news-perspective-header">🗣️ Official Statements</div>
-                    <div class="news-unavail">Loading official feeds…</div>
+                    <div class="news-perspective-header">🗣️ ${t('officialStatements')}</div>
+                    <div class="news-unavail">${t('loadingFeeds')}</div>
                 </div>`;
         }
 
         // ── Section 2: آخر الأخبار (RSS ticker items) ─────────────────────
         const rssHTML = newsItems.length ? `
-            <div class="news-divider">📻 آخر الأخبار</div>
+            <div class="news-divider">📻 ${t('latestNews')}</div>
             ${newsItems.map(item => `
                 <div class="update-item urgent">
                     <div class="update-headline">${item.title}</div>
@@ -210,10 +210,10 @@ export class NewsTicker {
 
     timeAgo(ts) {
         const diff = Math.floor((Date.now() - ts) / 60000);
-        if (diff < 1) return lang() === 'ar' ? 'الآن' : 'just now';
-        if (diff < 60) return lang() === 'ar' ? `${diff}د` : `${diff}m ago`;
+        if (diff < 1) return t('justNow');
+        if (diff < 60) return t('minutesAgo', diff);
         const h = Math.floor(diff / 60);
-        return lang() === 'ar' ? `${h}س` : `${h}h ago`;
+        return t('hoursAgo', h);
     }
 
     mapHeadline(title, defaultSourceId) {
