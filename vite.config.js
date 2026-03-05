@@ -416,20 +416,40 @@ function statsPlugin() {
     }
   }
 
+  const TOP_STOCKS = [
+    { symbol: 'AAPL',  name: 'Apple' },
+    { symbol: 'MSFT',  name: 'Microsoft' },
+    { symbol: 'NVDA',  name: 'Nvidia' },
+    { symbol: 'AMZN',  name: 'Amazon' },
+    { symbol: 'GOOGL', name: 'Google' },
+    { symbol: 'META',  name: 'Meta' },
+    { symbol: 'TSLA',  name: 'Tesla' },
+    { symbol: 'AVGO',  name: 'Broadcom' },
+    { symbol: 'JPM',   name: 'JPMorgan' },
+    { symbol: 'V',     name: 'Visa' },
+  ];
+
   async function buildStats() {
-    const [oil, gold, brent, natgas, alerts, acled] = await Promise.all([
+    const [oil, gold, brent, natgas, alerts, acled, ...stockPrices] = await Promise.all([
       fetchYahooFinance('CL=F'),
       fetchYahooFinance('GC=F'),
       fetchYahooFinance('BZ=F'),
       fetchYahooFinance('NG=F'),
       fetchConflictNews(),
       fetchACLED(),
+      ...TOP_STOCKS.map(s => fetchYahooFinance(s.symbol)),
     ]);
+    const stocks = TOP_STOCKS.map((s, i) => ({
+      symbol: s.symbol,
+      name:   s.name,
+      ...stockPrices[i],
+    })).filter(s => s.price != null);
     return {
       ts: new Date().toISOString(),
       prices: { oil, gold, brent, natgas },
       alerts,
       conflicts: acled,
+      stocks,
     };
   }
 

@@ -375,7 +375,7 @@ function renderTensionCard(alerts) {
 }
 
 function renderStats(container, data) {
-  const { prices, alerts, conflicts } = data;
+  const { prices, alerts, stocks } = data;
 
   container.innerHTML = `
     <!-- Global Tension Score -->
@@ -394,13 +394,25 @@ function renderStats(container, data) {
       </div>
     </div>
 
-    <!-- Active Conflicts (only when ACLED data is available) -->
-    ${conflicts?.available ? `
+    <!-- Top 10 Stocks — auto-scroll ticker -->
+    ${stocks?.length ? `
     <div class="stats-section">
-      <div class="stats-section-title">${t('statsConflicts')}</div>
-      <div class="stats-cards-row">
-        ${heroCard('statsEvents',     conflicts.events,     true)}
-        ${heroCard('statsFatalities', conflicts.fatalities, true)}
+      <div class="stats-section-title">📈 Top 10 Stocks</div>
+      <div class="stocks-ticker-wrap">
+        <div class="stocks-ticker-inner">
+          ${[...stocks, ...stocks].map(s => {
+            const dir = s.changePct >= 0 ? 'up' : 'down';
+            const arrow = dir === 'up' ? '▲' : '▼';
+            const sign  = dir === 'up' ? '+' : '';
+            return `
+            <div class="stock-row">
+              <span class="stock-symbol">${s.symbol}</span>
+              <span class="stock-name">${s.name}</span>
+              <span class="stock-price">$${s.price.toLocaleString()}</span>
+              <span class="stock-change ${dir}">${arrow} ${sign}${s.changePct.toFixed(2)}%</span>
+            </div>`;
+          }).join('')}
+        </div>
       </div>
     </div>` : ''}
 
