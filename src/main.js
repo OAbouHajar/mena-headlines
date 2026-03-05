@@ -409,7 +409,10 @@ channelList.addEventListener('click', (e) => {
     return;
   }
   const card = e.target.closest('.channel-card');
-  if (card) store.toggleChannel(card.dataset.id);
+  if (card) {
+    store.toggleChannel(card.dataset.id);
+    closeSidebarMobile();
+  }
 });
 
 // Video grid actions
@@ -439,7 +442,40 @@ videoGrid.addEventListener('click', (e) => {
 });
 
 // Header buttons
-$('#toggleSidebarBtn').addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+const sidebarBackdrop = $('#sidebarBackdrop');
+
+function isMobile() { return window.innerWidth <= 768; }
+
+function toggleSidebar() {
+  sidebar.classList.toggle('collapsed');
+  if (isMobile()) {
+    const isOpen = !sidebar.classList.contains('collapsed');
+    sidebarBackdrop.classList.toggle('visible', isOpen);
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  }
+}
+
+function closeSidebarMobile() {
+  if (isMobile() && !sidebar.classList.contains('collapsed')) {
+    sidebar.classList.add('collapsed');
+    sidebarBackdrop.classList.remove('visible');
+    document.body.style.overflow = '';
+  }
+}
+
+$('#toggleSidebarBtn').addEventListener('click', toggleSidebar);
+if (sidebarBackdrop) {
+  sidebarBackdrop.addEventListener('click', closeSidebarMobile);
+}
+// Start sidebar collapsed on mobile, and close panels that overlap
+if (isMobile()) {
+  sidebar.classList.add('collapsed');
+  // Close stats/flight panels on mobile so they don't overlay the entire screen
+  document.getElementById('statsPanel')?.classList.add('closed');
+  document.getElementById('statsBtn')?.classList.remove('active');
+  document.getElementById('flightPanel')?.classList.add('closed');
+  document.getElementById('flightBtn')?.classList.remove('active');
+}
 $('#statsBtn').addEventListener('click', () => toggleStatsPanel());
 $('#flightBtn').addEventListener('click', () => toggleFlightPanel());
 $('#addChannelBtn').addEventListener('click', () => openModal());
@@ -503,6 +539,7 @@ document.addEventListener('keydown', (e) => {
     case 'escape':
       document.querySelectorAll('.video-cell.fullscreen').forEach((c) => c.classList.remove('fullscreen'));
       if (document.body.classList.contains('theatre')) document.body.classList.remove('theatre');
+      closeSidebarMobile();
       closeModal();
       closeIntelPanel();
       break;
@@ -679,7 +716,7 @@ document.addEventListener('keydown', (e) => {
   const char = e.key.toLowerCase();
   if (char === 's') {
     e.preventDefault();
-    $('#toggleSidebarBtn').click();
+    toggleSidebar();
   } else if (char === 't') {
     e.preventDefault();
     $('#theatreBtn').click();

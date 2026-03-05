@@ -2576,6 +2576,616 @@ a.news-source-label:hover { filter: brightness(1.2); }
 .stock-change.up   { color: #4ade80; }
 .stock-change.down { color: #f87171; }
 
+/* =====================================================================
+   MOBILE & TABLET RESPONSIVE — comprehensive overhaul
+   ===================================================================== */
 
+/* ── Tablet (≤1024px) ─────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+    :root {
+        --sidebar-width: 260px;
+        --ticker-height: 56px;
+    }
+
+    .header h1 {
+        font-size: 11px;
+    }
+
+    .header-controls .btn span,
+    .header-controls #langToggleBtn span {
+        display: none;
+    }
+    .header-controls .btn {
+        padding: 6px 8px;
+    }
+
+    /* Stats / Flight panels narrower */
+    .stats-standalone {
+        width: 240px;
+    }
+
+    .intel-panel {
+        width: clamp(340px, 55%, 580px);
+    }
+}
+
+/* ── Mobile (≤768px) — major layout changes ───────────────────────────── */
+@media (max-width: 768px) {
+    :root {
+        --header-height: 48px;
+        --ticker-height: 44px;
+        --sidebar-width: 100%;
+    }
+
+    body {
+        overflow: auto;
+        height: 100%;
+        height: -webkit-fill-available;
+    }
+
+    /* ---- Header ---- */
+    .header {
+        height: var(--header-height);
+        padding: 0 10px;
+        gap: 6px;
+        position: sticky;
+        top: 0;
+        z-index: 200;
+    }
+
+    .header-left {
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .header-logo {
+        width: 24px;
+        height: 24px;
+    }
+
+    .header h1 {
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 110px;
+    }
+
+    /* Hide price tickers — already hidden at 900px but be explicit */
+    .header-price-bar {
+        display: none !important;
+    }
+
+    /* Header controls: only show essential buttons */
+    .header-controls {
+        gap: 3px;
+        margin-left: auto;
+    }
+
+    .header-controls .btn span {
+        display: none;
+    }
+    .header-controls .btn {
+        padding: 6px 7px;
+        min-width: 0;
+    }
+
+    /* Hide less critical header buttons on mobile */
+    .header-controls .btn-intel span,
+    .header-controls .btn-stats span,
+    .header-controls .btn-flight span {
+        display: none;
+    }
+
+    /* Smaller icon buttons on mobile */
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Hide contributor, github, facebook buttons on small screens */
+    .header-controls > a.btn-icon,
+    .contributor-area {
+        display: none;
+    }
+
+    /* Live users badge compact */
+    .live-users-badge {
+        padding: 2px 7px 2px 5px;
+        font-size: 10px;
+        gap: 3px;
+    }
+
+    .layout-group {
+        display: none;
+    }
+
+    /* ---- Main Container ---- */
+    .main-container {
+        flex-direction: column;
+        height: auto;
+        min-height: calc(100vh - var(--header-height) - var(--ticker-height));
+        min-height: calc(100dvh - var(--header-height) - var(--ticker-height));
+    }
+
+    /* ---- Sidebar — mobile overlay ---- */
+    .sidebar {
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        bottom: 0;
+        width: 85vw;
+        max-width: 340px;
+        z-index: 150;
+        transform: translateX(-100%);
+        transition: transform 0.3s var(--ease-out-expo);
+        box-shadow: none;
+        border-right: 1px solid var(--border);
+    }
+    [dir="rtl"] .sidebar {
+        left: auto;
+        right: 0;
+        transform: translateX(100%);
+        border-right: none;
+        border-left: 1px solid var(--border);
+    }
+
+    .sidebar:not(.collapsed) {
+        transform: translateX(0);
+        box-shadow: 8px 0 40px rgba(0,0,0,0.7);
+    }
+    [dir="rtl"] .sidebar:not(.collapsed) {
+        box-shadow: -8px 0 40px rgba(0,0,0,0.7);
+    }
+
+    .sidebar.collapsed {
+        transform: translateX(-100%);
+        width: 85vw;
+        max-width: 340px;
+        opacity: 1;
+    }
+    [dir="rtl"] .sidebar.collapsed {
+        transform: translateX(100%);
+    }
+
+    /* Mobile backdrop for sidebar */
+    .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        top: var(--header-height);
+        background: rgba(0,0,0,0.55);
+        z-index: 149;
+    }
+    .sidebar-backdrop.visible {
+        display: block;
+    }
+
+    /* ---- Stats & Flight Panels — mobile bottom sheet ---- */
+    .stats-standalone {
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100% !important;
+        z-index: 140;
+        border-right: none;
+        border-left: none;
+        transform: translateY(100%);
+        transition: transform 0.3s var(--ease-out-expo);
+    }
+    .stats-standalone:not(.closed) {
+        transform: translateY(0);
+    }
+    .stats-standalone.closed {
+        transform: translateY(100%);
+        width: 100% !important;
+        opacity: 1;
+    }
+
+    /* ---- Video Area ---- */
+    .video-area {
+        flex: 1;
+        min-height: 50vh;
+        overflow: visible;
+    }
+
+    .video-grid {
+        grid-template-columns: 1fr !important;
+        grid-auto-rows: minmax(220px, 56vw);
+        gap: 4px;
+        padding: 4px;
+        height: auto !important;
+        min-height: 50vh;
+    }
+
+    /* Disable focus-mode dimming on mobile (annoying with touch) */
+    .video-grid:hover .video-cell:not(:hover) {
+        opacity: 1;
+        filter: none;
+        transform: none;
+    }
+
+    .video-cell {
+        border-radius: var(--radius-sm);
+    }
+
+    /* Always show overlay on mobile for touch access */
+    .cell-overlay {
+        opacity: 1;
+    }
+    .cell-overlay-bar {
+        height: 40px;
+        padding: 0 8px;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
+    }
+
+    .cell-name {
+        font-size: 12px;
+    }
+
+    .cell-btn {
+        width: 34px;
+        height: 34px;
+    }
+
+    /* ---- News Ticker ---- */
+    .news-ticker {
+        height: var(--ticker-height);
+        position: sticky;
+        bottom: 0;
+    }
+
+    .ticker-item {
+        font-size: 12.5px;
+        padding: 2px 6px;
+        gap: 5px;
+    }
+
+    .ticker-badge {
+        font-size: 9px;
+        padding: 1px 5px;
+    }
+
+    .ticker-source {
+        font-size: 10px;
+    }
+
+    /* ---- Intel Panel — full screen on mobile ---- */
+    .intel-panel {
+        width: 100% !important;
+        max-width: 100%;
+        border-left: none;
+    }
+    [dir="rtl"] .intel-panel {
+        border-right: none;
+    }
+
+    .intel-panel-header {
+        padding: 14px 16px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .intel-panel-title {
+        font-size: 12px;
+    }
+
+    .intel-panel-body {
+        padding: 10px 16px 24px;
+    }
+
+    .intel-text {
+        font-size: 14px;
+        line-height: 1.75;
+    }
+    [dir="rtl"] .intel-text {
+        font-size: 15px;
+        line-height: 1.9;
+    }
+
+    .intel-tags {
+        gap: 5px;
+    }
+
+    .intel-tag {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+
+    /* ---- Modal — full screen on mobile ---- */
+    .modal-overlay {
+        align-items: flex-end;
+    }
+
+    .modal {
+        max-width: 100%;
+        width: 100%;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        max-height: 92vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 16px 18px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .modal-header h2 {
+        font-size: 15px;
+    }
+
+    .modal-body {
+        padding: 16px 18px;
+        gap: 14px;
+    }
+
+    .modal-footer {
+        padding: 14px 18px;
+        position: sticky;
+        bottom: 0;
+    }
+
+    /* ---- Toasts ---- */
+    .toast-container {
+        left: 10px;
+        right: 10px;
+        bottom: 60px;
+    }
+    [dir="rtl"] .toast-container {
+        left: 10px;
+        right: 10px;
+    }
+
+    .toast {
+        min-width: 0;
+        width: 100%;
+        font-size: 12px;
+        padding: 10px 14px;
+    }
+
+    /* ---- Dropdowns ---- */
+    .auth-dropdown {
+        position: fixed;
+        top: var(--header-height);
+        left: 10px;
+        right: 10px;
+        min-width: 0;
+        width: auto;
+    }
+    [dir="rtl"] .auth-dropdown {
+        left: 10px;
+        right: 10px;
+    }
+
+    .contributor-dropdown {
+        position: fixed;
+        top: var(--header-height);
+        left: 10px;
+        right: 10px;
+        min-width: 0;
+        width: auto;
+    }
+
+    /* ---- Empty state ---- */
+    .empty-state {
+        inset: 4px;
+        gap: 8px;
+    }
+    .empty-state svg {
+        width: 36px;
+        height: 36px;
+    }
+    .empty-state p {
+        font-size: 12px;
+    }
+
+    /* ---- Theatre & Fullscreen on mobile ---- */
+    .theatre .sidebar {
+        display: none !important;
+    }
+    .theatre .main-container {
+        min-height: calc(100vh - var(--header-height) - var(--ticker-height));
+        min-height: calc(100dvh - var(--header-height) - var(--ticker-height));
+    }
+
+    /* ---- Stats panel widgets ---- */
+    .stats-map {
+        height: 160px;
+    }
+
+    .stats-cards-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+
+    .stat-card {
+        padding: 8px 10px;
+    }
+
+    .stat-price {
+        font-size: 13px;
+    }
+
+    .crisis-monitor {
+        padding: 10px 12px;
+    }
+
+    .stocks-ticker-wrap {
+        height: 140px;
+    }
+}
+
+/* ── Small phones (≤480px) — extra compact ──────────────────────────── */
+@media (max-width: 480px) {
+    .header {
+        padding: 0 8px;
+        gap: 4px;
+    }
+
+    .header h1 {
+        font-size: 10px;
+        max-width: 80px;
+    }
+
+    .header-logo {
+        display: none;
+    }
+
+    /* Hide even more buttons on very small screens */
+    #theatreBtn,
+    #refreshBtn,
+    #langToggleBtn {
+        display: none;
+    }
+
+    .btn-icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    .header-controls {
+        gap: 2px;
+    }
+
+    .video-grid {
+        grid-auto-rows: minmax(180px, 52vw);
+        gap: 3px;
+        padding: 3px;
+    }
+
+    .sidebar:not(.collapsed) {
+        width: 100vw;
+        max-width: 100vw;
+    }
+
+    .news-ticker {
+        height: 38px;
+    }
+
+    .ticker-item {
+        font-size: 11.5px;
+    }
+
+    .intel-panel-header {
+        padding: 12px 12px;
+    }
+
+    .intel-panel-body {
+        padding: 8px 12px 20px;
+    }
+
+    .modal-body {
+        padding: 14px 14px;
+    }
+}
+
+/* ── Touch-friendly improvements ──────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+    /* Larger touch targets */
+    .btn-icon {
+        min-width: 36px;
+        min-height: 36px;
+    }
+
+    .btn-icon-sm {
+        min-width: 30px;
+        min-height: 30px;
+    }
+
+    .btn {
+        min-height: 36px;
+    }
+
+    .channel-card {
+        padding: 10px 12px;
+        gap: 12px;
+    }
+
+    .channel-actions {
+        opacity: 1;
+        gap: 4px;
+    }
+
+    .channel-actions .btn-icon-sm {
+        min-width: 32px;
+        min-height: 32px;
+    }
+
+    /* Disable focus-mode dim on touch */
+    .video-grid:hover .video-cell:not(:hover) {
+        opacity: 1;
+        filter: none;
+        transform: none;
+    }
+
+    /* Cell overlay always visible for touch */
+    .cell-overlay {
+        opacity: 1;
+    }
+
+    .cell-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* Disable dragging on touch */
+    .channel-card[draggable="true"] {
+        cursor: default;
+    }
+
+    /* Sidebar tabs taller */
+    .sidebar-tab {
+        padding: 14px 0;
+    }
+
+    /* Update items easier to tap */
+    .update-item {
+        padding: 12px 12px;
+    }
+
+    /* Ticker items tappable */
+    .ticker-item {
+        padding: 6px 10px;
+    }
+}
+
+/* ── Safe area insets (notch / home indicator) ────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .news-ticker {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    .modal-footer {
+        padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    }
+    .stats-standalone {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* ── Landscape phone ─────────────────────────────────────────────────── */
+@media (max-width: 768px) and (orientation: landscape) {
+    :root {
+        --header-height: 40px;
+        --ticker-height: 32px;
+    }
+
+    .video-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        grid-auto-rows: minmax(140px, 38vw);
+    }
+
+    .news-ticker {
+        height: 32px;
+    }
+
+    .ticker-item {
+        font-size: 11px;
+    }
+}
 
 
