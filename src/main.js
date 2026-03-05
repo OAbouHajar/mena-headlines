@@ -613,12 +613,9 @@ initStatsPanel();
 
 // ============ Live Users Counter ============
 (function () {
-  const badge = $('#liveUsersBadge');
   const countEl = $('#liveUsersCount');
   initPresence((count) => {
-    if (!badge || !countEl) return;
-    countEl.textContent = count;
-    badge.style.display = 'flex';
+    if (countEl) countEl.textContent = count;
   });
 })();
 
