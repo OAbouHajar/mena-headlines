@@ -59,6 +59,30 @@ async function getOpenSkyToken() {
   return _token;
 }
 
+async function fetchAirplanesLive() {
+  // Airplanes.live ADS-B API — free, no auth, reliable
+  const resp = await fetch('https://api.airplanes.live/v2/point/25/45/1500', {
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!resp.ok) throw new Error('Airplanes.live HTTP ' + resp.status);
+  const json = await resp.json();
+  const ac = json.ac || [];
+  return {
+    states: ac
+      .filter(a => a.lat != null && a.lon != null && a.alt_baro !== 'ground')
+      .map(a => {
+        const s = [];
+        s[5] = a.lon;
+        s[6] = a.lat;
+        s[7] = (typeof a.alt_baro === 'number' ? a.alt_baro : 0) * 0.3048;
+        s[8] = false;
+        s[9] = (a.gs || 0) * 0.514444;
+        return s;
+      })
+  };
+}
+
 async function fetchFlightRadar24() {
   const resp = await fetch(
     'https://data-live.flightradar24.com/zones/fcgi/feed.js?bounds=42,8,9,77&faa=1&satellite=1&mlat=1&flarm=1&adsb=1&gnd=0&air=1&vehicles=0&estimated=1&maxage=14400&gliders=0&stats=1',
@@ -114,9 +138,15 @@ module.exports = async function (context, req) {
     );
 
     if (resp.status === 429) {
-      // 3. FR24 only on rate-limit
-      context.log.warn('[flights] OpenSky 429 — falling back to FR24');
-      json = await fetchFlightRadar24();
+      // 3. Fallback chain: Airplanes.live -> FR24
+      context.log.warn('[flights] OpenSky 429 — trying Airplanes.live');
+      try {
+        json = await fetchAirplanesLive();
+        context.log('[flights] Airplanes.live OK: ' + (json.states || []).length + ' aircraft');
+      } catch (e1) {
+        context.log.warn('[flights] Airplanes.live failed: ' + e1.message + ' — trying FR24');
+        json = await fetchFlightRadar24();
+      }
     } else if (!resp.ok) {
       throw new Error('OpenSky HTTP ' + resp.status);
     } else {

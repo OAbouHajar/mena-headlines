@@ -522,6 +522,40 @@ function flightsPlugin(env = {}) {
     return null;
   }
 
+  async function fetchAirplanesLive() {
+    // Airplanes.live ADS-B API — free, no auth required
+    // point/{lat}/{lon}/{radius_nm}
+    // Center of MENA region (~25N, 45E), 1500nm radius covers entire region
+    try {
+      console.log('[flights] Trying Airplanes.live...');
+      const resp = await fetch('https://api.airplanes.live/v2/point/25/45/1500', {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(15000)
+      });
+      if (!resp.ok) throw new Error(`Airplanes.live HTTP ${resp.status}`);
+      const json = await resp.json();
+      const ac = json.ac || [];
+      console.log(`[flights] Airplanes.live returned ${ac.length} aircraft`);
+      // Map to OpenSky array format: 5=lon, 6=lat, 7=alt(m), 8=on_ground, 9=vel(m/s)
+      return {
+        states: ac
+          .filter(a => a.lat != null && a.lon != null && a.alt_baro !== 'ground')
+          .map(a => {
+            const s = [];
+            s[5] = a.lon;
+            s[6] = a.lat;
+            s[7] = (typeof a.alt_baro === 'number' ? a.alt_baro : 0) * 0.3048; // ft -> m
+            s[8] = false; // not on ground
+            s[9] = (a.gs || 0) * 0.514444; // kts -> m/s
+            return s;
+          })
+      };
+    } catch (e) {
+      console.warn('[flights] Airplanes.live fetch failed:', e.message);
+      return null;
+    }
+  }
+
   async function fetchFlightRadar24() {
     // FlightRadar24 unofficial API (bounds=maxY,minY,minX,maxX)
     // 8-42 Lat, 9-77 Lon -> 42,8,9,77
@@ -593,23 +627,29 @@ function flightsPlugin(env = {}) {
       
       let json;
       if (resp.status === 429) {
-        console.warn('[flights] OpenSky 429 Rate Limit. Trying fallback source (FlightRadar24)...');
-        // Try FR24 fallback immediately
-        const fr24Data = await fetchFlightRadar24();
-        if (fr24Data && fr24Data.states && fr24Data.states.length > 0) {
-           console.log(`[flights] Switching to FlightRadar24 data (${fr24Data.states.length} flights)`);
-           json = fr24Data;
+        console.warn('[flights] OpenSky 429 Rate Limit. Trying fallback sources...');
+        // Try Airplanes.live first (most reliable), then FR24
+        const alData = await fetchAirplanesLive();
+        if (alData && alData.states && alData.states.length > 0) {
+           console.log(`[flights] Using Airplanes.live data (${alData.states.length} flights)`);
+           json = alData;
         } else {
-           // Fallback to cache or mock
-           console.warn('[flights] All sources failed (or returned 0). Returning mock/cache.');
-           return _cache || {
-             count: 120, 
-             highest: 11500,
-             fastest: 920,
-             countries: [
-               { flag: '⚠️', ar: 'Mock Data (API Error)', n: 120 }
-             ]
-           };
+          const fr24Data = await fetchFlightRadar24();
+          if (fr24Data && fr24Data.states && fr24Data.states.length > 0) {
+             console.log(`[flights] Using FlightRadar24 data (${fr24Data.states.length} flights)`);
+             json = fr24Data;
+          } else {
+             // Fallback to cache or mock
+             console.warn('[flights] All 3 sources failed. Returning cache/mock.');
+             return _cache || {
+               count: 120, 
+               highest: 11500,
+               fastest: 920,
+               countries: [
+                 { flag: '⚠️', ar: 'Mock Data (API Error)', n: 120 }
+               ]
+             };
+          }
         }
       } else if (!resp.ok) {
         throw new Error(`OpenSky HTTP ${resp.status}`);
