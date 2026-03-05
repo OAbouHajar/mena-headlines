@@ -411,7 +411,8 @@ channelList.addEventListener('click', (e) => {
   const card = e.target.closest('.channel-card');
   if (card) {
     store.toggleChannel(card.dataset.id);
-    closeSidebarMobile();
+    // Delay sidebar close so the toggle completes before DOM shifts
+    setTimeout(closeSidebarMobile, 180);
   }
 });
 

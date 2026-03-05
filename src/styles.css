@@ -499,7 +499,7 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     border-right: none;
     border-left: 1px solid var(--border);
 }
-.sidebar.collapsed { width: 0; opacity: 0; border: none; box-shadow: none; }
+.sidebar.collapsed { width: 0; opacity: 0; border: none; box-shadow: none; pointer-events: none; }
 
 /* ─── Standalone Stats Panel ──────────────────────────── */
 .stats-standalone {
@@ -2734,6 +2734,7 @@ a.news-source-label:hover { filter: brightness(1.2); }
     .sidebar:not(.collapsed) {
         transform: translateX(0);
         box-shadow: 8px 0 40px rgba(0,0,0,0.7);
+        pointer-events: auto;
     }
     [dir="rtl"] .sidebar:not(.collapsed) {
         box-shadow: -8px 0 40px rgba(0,0,0,0.7);
@@ -2744,6 +2745,7 @@ a.news-source-label:hover { filter: brightness(1.2); }
         width: 85vw;
         max-width: 340px;
         opacity: 1;
+        pointer-events: none;
     }
     [dir="rtl"] .sidebar.collapsed {
         transform: translateX(100%);
