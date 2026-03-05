@@ -1,7 +1,17 @@
 import { lang, onLangChange } from './i18n.js';
 
+// Group metadata for the X/tweets section
+const TWEET_GROUPS = [
+  { id: 'us',     label: '🇺🇸 US Gov',   css: 'west'   },
+  { id: 'israel', label: '🇮🇱 Israel',   css: 'israel' },
+  { id: 'iran',   label: '🇮🇷 Iran',     css: 'iran'   },
+];
+
 export class NewsTicker {
     constructor() {
+        this._tweetsData    = [];   // Array of { handle, label, flag, group, items }
+        this._tweetsLoading = false;
+        this._tickerItems   = [];
         this.feedsByLang = {
             ar: [
                 { id: 'aljazeera_arabic', name: 'الجزيرة', url: 'https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9' },
@@ -29,10 +39,35 @@ export class NewsTicker {
 
     async init() {
         if (!this.track) return;
-        await this.fetchAndDisplayNews();
+        // Show loading skeleton immediately while fetching
+        this._tweetsLoading = true;
+        this.renderUpdatesFeed([]);
+        // Fetch in parallel
+        await Promise.all([
+            this.fetchAndDisplayNews(),
+            this.fetchTweets(),
+        ]);
         setInterval(() => this.fetchAndDisplayNews(), this.updateInterval);
+        setInterval(() => this.fetchTweets(), 3 * 60 * 1000); // every 3 min
         this.setupInteractions();
         onLangChange(() => this.fetchAndDisplayNews());
+    }
+
+    /** Fetch tweets from the server-side /api/tweets endpoint */
+    async fetchTweets() {
+        this._tweetsLoading = true;
+        this.renderUpdatesFeed(this._tickerItems);
+        try {
+            const resp = await fetch('/api/tweets', { signal: AbortSignal.timeout(20000) });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            this._tweetsData = await resp.json();
+        } catch (err) {
+            console.warn('[ticker] fetchTweets failed:', err.message);
+            this._tweetsData = [];
+        } finally {
+            this._tweetsLoading = false;
+            this.renderUpdatesFeed(this._tickerItems);
+        }
     }
 
     async fetchAndDisplayNews() {
@@ -100,22 +135,77 @@ export class NewsTicker {
     }
 
     renderUpdatesFeed(newsItems) {
+        this._tickerItems = newsItems;
         const feed = document.getElementById('updatesFeed');
         if (!feed) return;
         const empty = document.getElementById('updatesEmpty');
         if (empty) empty.remove();
-        feed.innerHTML = newsItems.map(item => {
-            const timeAgo = this.timeAgo(item.pubDate);
-            return `
+
+        // ── Section 1: X / Tweets ───────────────────────────────────────────
+        let tweetsHTML = '';
+        if (this._tweetsLoading && this._tweetsData.length === 0) {
+            // Skeleton while loading
+            tweetsHTML = `
+                <div class="news-perspective-block">
+                    <div class="news-perspective-header">🗣️ Official Statements</div>
+                    ${[1, 2, 3].map(() => `
+                        <div class="news-source-group">
+                            <div class="news-src-skeleton-label"></div>
+                            <div class="news-src-skeleton-item"></div>
+                            <div class="news-src-skeleton-item short"></div>
+                        </div>`).join('')}
+                </div>`;
+        } else if (this._tweetsData.length > 0) {
+            // Group accounts by country group
+            const grouped = {};
+            for (const acc of this._tweetsData) {
+                if (!grouped[acc.group]) grouped[acc.group] = [];
+                grouped[acc.group].push(acc);
+            }
+            tweetsHTML = `
+                <div class="news-perspective-block">
+                    <div class="news-perspective-header">🗣️ Official Statements</div>
+                    ${TWEET_GROUPS.map(g => {
+                        const accs = grouped[g.id] || [];
+                        if (!accs.length) return '';
+                        return `
+                        <div class="news-tweet-group">
+                            <div class="news-tweet-group-label news-src-${g.css}">${g.label}</div>
+                            ${accs.map(acc => `
+                                <div class="news-source-group">
+                                    <a class="news-source-label news-src-${g.css} news-src-x" href="https://x.com/${acc.handle}" target="_blank" rel="noopener" title="View @${acc.handle} on X">
+                                        <span class="news-src-flag">${acc.flag}</span>
+                                        <span>@${acc.handle}</span>
+                                        <span class="news-src-name-sub">${acc.label}</span>
+                                    </a>
+                                    ${acc.items.map(it => `
+                                        <a class="news-item-link" href="${it.link || `https://x.com/${acc.handle}`}" target="_blank" rel="noopener">${it.title}</a>
+                                    `).join('')}
+                                </div>`).join('')}
+                        </div>`;
+                    }).join('')}
+                </div>`;
+        } else {
+            tweetsHTML = `
+                <div class="news-perspective-block">
+                    <div class="news-perspective-header">🗣️ Official Statements</div>
+                    <div class="news-unavail">Loading official feeds…</div>
+                </div>`;
+        }
+
+        // ── Section 2: آخر الأخبار (RSS ticker items) ─────────────────────
+        const rssHTML = newsItems.length ? `
+            <div class="news-divider">📻 آخر الأخبار</div>
+            ${newsItems.map(item => `
                 <div class="update-item urgent">
                     <div class="update-headline">${item.title}</div>
                     <div class="update-meta">
                         <span class="update-source">${item.source}</span>
-                        <span class="update-time">${timeAgo}</span>
+                        <span class="update-time">${this.timeAgo(item.pubDate)}</span>
                     </div>
-                </div>
-            `;
-        }).join('');
+                </div>`).join('')}` : '';
+
+        feed.innerHTML = tweetsHTML + rssHTML;
     }
 
     timeAgo(ts) {

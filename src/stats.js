@@ -326,61 +326,12 @@ function renderError(container) {
   container.innerHTML = `<div class="stats-error">${t('statsNoData')}</div>`;
 }
 
-// Seismic tension score: based on USGS alert levels + magnitude distribution
-function renderTensionCard(alerts) {
-  if (!alerts || alerts.length === 0) {
-    return `<div class="tension-card" style="--tension-color:#4caf7d">
-      <div class="tension-top">
-        <div class="tension-score">0</div>
-        <div class="tension-right">
-          <div class="tension-label">${t('tensionTitle')}</div>
-          <div class="tension-sublabel">${t('tensionLow')}</div>
-        </div>
-      </div>
-      <div class="tension-bar-track"><div class="tension-bar-fill" style="width:0%"></div></div>
-      <div class="tension-note">${t('tensionNote')}</div>
-    </div>`;
-  }
-  const red    = alerts.filter(a => a.level === 'red').length;
-  const orange = alerts.filter(a => a.level === 'orange').length;
-  const green  = alerts.filter(a => a.level === 'green').length;
 
-  const raw = Math.min(100, red * 25 + orange * 8 + green * 1);
-  const score = Math.round(raw);
-  let levelKey, color;
-  if (score >= 70)      { levelKey = 'tensionCritical'; color = '#c94040'; }
-  else if (score >= 45) { levelKey = 'tensionElevated'; color = '#e07b39'; }
-  else if (score >= 20) { levelKey = 'tensionModerate'; color = '#e8a838'; }
-  else                  { levelKey = 'tensionLow';      color = '#4caf7d'; }
-
-  return `
-    <div class="tension-card" style="--tension-color:${color}">
-      <div class="tension-top">
-        <div class="tension-score">${score}</div>
-        <div class="tension-right">
-          <div class="tension-label">${t('tensionTitle')}</div>
-          <div class="tension-sublabel">${t(levelKey)}</div>
-        </div>
-      </div>
-      <div class="tension-bar-track">
-        <div class="tension-bar-fill" style="width:${score}%;background:${color}"></div>
-      </div>
-      <div class="tension-breakdown">
-        <span class="tension-pill tension-pill-red">${red} ${t('statsAlertRed')}</span>
-        <span class="tension-pill tension-pill-orange">${orange} ${t('statsAlertOrange')}</span>
-        <span class="tension-pill tension-pill-green">${green} ${t('statsAlertGreen')}</span>
-      </div>
-      <div class="tension-note">${t('tensionNote')}</div>
-    </div>`;
-}
 
 function renderStats(container, data) {
-  const { prices, alerts, stocks } = data;
+  const { prices, stocks } = data;
 
   container.innerHTML = `
-    <!-- Global Tension Score -->
-    ${renderTensionCard(alerts)}
-
     <!-- Market Pulse -->
     <div class="stats-section">
       <div class="stats-section-title">${t('statsMarket')}</div>
@@ -416,13 +367,6 @@ function renderStats(container, data) {
       </div>
     </div>` : ''}
 
-    <!-- Seismic Disaster Alerts -->
-    <div class="stats-section">
-      <div class="stats-section-title">${t('statsAlerts')}</div>
-      <div id="statsAlertList">
-        ${renderAlerts(alerts)}
-      </div>
-    </div>
   `;
 
   // Plot active conflict zones on the Leaflet map
@@ -455,22 +399,6 @@ function heroCard(labelKey, value, available) {
       <div class="stat-hero-value">${available === false ? '—' : formatted}</div>
       <div class="stat-card-label">${t(labelKey)}</div>
     </div>`;
-}
-
-function renderAlerts(alerts) {
-  if (!alerts || alerts.length === 0) {
-    return `<div class="stats-empty">${t('statsNoData')}</div>`;
-  }
-  return alerts.map((a) => {
-    const levelLabel = a.level === 'red' ? t('statsAlertRed') : a.level === 'orange' ? t('statsAlertOrange') : t('statsAlertGreen');
-    const meta = a.domain || (a.pubDate ? new Date(a.pubDate).toLocaleDateString(lang() === 'ar' ? 'ar-SA' : 'en-GB', { day: 'numeric', month: 'short' }) : '');
-    return `
-      <div class="alert-item">
-        <span class="alert-badge alert-badge-${a.level}">${levelLabel}</span>
-        <span class="alert-text">${a.title}</span>
-        <span class="alert-date">${meta}</span>
-      </div>`;
-  }).join('');
 }
 
 // ---------------------------------------------------------------------------
