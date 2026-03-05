@@ -12,13 +12,20 @@ const { BlobServiceClient } = require('@azure/storage-blob');
 
 const API_KEY     = process.env.AZURE_OPENAI_API_KEY;
 const API_VERSION = '2024-12-01-preview';
-const ENDPOINT    = process.env.AZURE_OPENAI_ENDPOINT || 'https://***REMOVED***/';
-const MODEL_NAME  = '***REMOVED***';
-const DEPLOYMENT  = '***REMOVED***';
+const ENDPOINT    = process.env.AZURE_OPENAI_ENDPOINT;
+const MODEL_NAME  = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+const DEPLOYMENT  = MODEL_NAME;
 
 const BLOB_CONTAINER = 'intel-cache';
 const CACHE_TTL_MS   = 3 * 60 * 60 * 1000; // 3 hours
 const MAX_HISTORY    = 4;                    // keep 4 reports = 12h history
+
+if (!API_KEY || !ENDPOINT) {
+  module.exports = async function (context) {
+    context.res = { status: 503, body: { error: 'Azure OpenAI not configured' } };
+  };
+  return;
+}
 
 // Politics & geopolitics feeds only
 const RSS_FEEDS_EN = [

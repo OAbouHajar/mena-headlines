@@ -103,9 +103,9 @@ function resolveChannelPlugin() {
 function intelligencePlugin() {
   const API_KEY     = process.env.AZURE_OPENAI_API_KEY;
   const API_VERSION = '2024-12-01-preview';
-  const ENDPOINT    = process.env.AZURE_OPENAI_ENDPOINT || 'https://your-resource.cognitiveservices.azure.com/';
-  const MODEL_NAME  = '***REMOVED***';
-  const DEPLOYMENT  = '***REMOVED***';
+  const ENDPOINT    = process.env.AZURE_OPENAI_ENDPOINT;
+  const MODEL_NAME  = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+  const DEPLOYMENT  = MODEL_NAME;
 
   // RSS feeds — English (politics & world affairs only)
   const RSS_FEEDS_EN = [

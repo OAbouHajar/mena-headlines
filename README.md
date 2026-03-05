@@ -77,6 +77,7 @@ Copy `.env.example` to `.env` and configure the following:
 |---------------------------------------|---------------------------------------------------|
 | `AZURE_OPENAI_API_KEY`                | Azure OpenAI key (enables AI intelligence panel)  |
 | `AZURE_OPENAI_ENDPOINT`               | Azure OpenAI endpoint URL                         |
+| `AZURE_OPENAI_DEPLOYMENT`             | Azure OpenAI deployment name (default: `gpt-4o-mini`) |
 | `AZURE_STORAGE_CONNECTION_STRING`     | Azure Blob Storage (caches AI reports)             |
 | `ACLED_EMAIL`                          | ACLED account email (enables conflict stats)      |
 | `ACLED_PASSWORD`                       | ACLED account password                            |
