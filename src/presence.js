@@ -1,60 +1,41 @@
 /**
- * Presence tracking — counts how many browser sessions are active right now.
- * Uses Firestore: each session writes a heartbeat doc every 30 s.
- * Sessions inactive for > 90 s are excluded from the count automatically.
- *
- * Firestore rules required (Firebase console → Firestore → Rules):
- *   match /presence/{sid} {
- *     allow read, write: if true;
- *   }
+ * Presence tracking — in-memory counter via Azure Function /api/presence.
+ * Each session sends a POST heartbeat every 30 s.
+ * The server counts sessions active within the last 90 s and returns the total.
+ * No external database required.
  */
-import { db, isConfigured } from './firebase.js';
 
-const HEARTBEAT_MS   = 30_000;   // write interval
-const STALE_MS       = 90_000;   // exclude sessions older than this
+const HEARTBEAT_MS = 30_000;  // POST to keep session alive
+const POLL_MS      = 10_000;  // GET to refresh count shown in badge
 
-let _sessionId       = null;
-let _heartbeatTimer  = null;
-let _unsubSnapshot   = null;
-
-// Firestore lazy refs
-let _colRef, _docRef, _setDoc, _deleteDoc, _onSnapshot, _serverTimestamp;
-
-async function ensureRefs() {
-  if (_setDoc) return;
-  const mod = await import('firebase/firestore');
-  _setDoc          = mod.setDoc;
-  _deleteDoc       = mod.deleteDoc;
-  _onSnapshot      = mod.onSnapshot;
-  _serverTimestamp = mod.serverTimestamp;
-
-  const { collection, doc } = mod;
-  _colRef = collection(db, 'presence');
-  _docRef = (sid) => doc(db, 'presence', sid);
-}
+let _sessionId     = null;
+let _heartbeatTimer = null;
+let _pollTimer      = null;
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }
 
-async function writeHeartbeat() {
-  if (!_sessionId) return;
+async function apiPost(sid) {
   try {
-    await ensureRefs();
-    await _setDoc(_docRef(_sessionId), { lastSeen: _serverTimestamp() });
-  } catch (e) {
-    console.warn('[presence] heartbeat failed:', e.message);
-  }
+    const r = await fetch(`/api/presence?sid=${sid}`, { method: 'POST' });
+    if (!r.ok) return null;
+    return (await r.json()).count;
+  } catch { return null; }
 }
 
-async function removeSession() {
-  if (!_sessionId) return;
+async function apiDelete(sid) {
   try {
-    await ensureRefs();
-    await _deleteDoc(_docRef(_sessionId));
-  } catch (e) {
-    console.warn('[presence] remove failed:', e.message);
-  }
+    await fetch(`/api/presence?sid=${sid}`, { method: 'DELETE', keepalive: true });
+  } catch { /* best-effort */ }
+}
+
+async function apiGet() {
+  try {
+    const r = await fetch('/api/presence');
+    if (!r.ok) return null;
+    return (await r.json()).count;
+  } catch { return null; }
 }
 
 /**
@@ -63,53 +44,38 @@ async function removeSession() {
  * @returns {() => void}  Cleanup function.
  */
 export async function initPresence(onCountChange) {
-  if (!isConfigured || !db) return () => {};
+  const notify = (n) => { if (n != null && typeof onCountChange === 'function') onCountChange(n); };
 
-  // Show at least 1 (current user) immediately — don't wait for Firestore
-  if (typeof onCountChange === 'function') onCountChange(1);
+  _sessionId = generateId();
 
-  try {
-    await ensureRefs();
+  // Register this session and get initial count
+  const initial = await apiPost(_sessionId);
+  notify(initial ?? 1);
 
-    _sessionId = generateId();
+  // Keep session alive
+  _heartbeatTimer = setInterval(async () => {
+    const n = await apiPost(_sessionId);
+    notify(n);
+  }, HEARTBEAT_MS);
 
-    // Best-effort cleanup when tab closes
-    window.addEventListener('beforeunload', removeSession);
+  // Poll for count updates (other users joining/leaving)
+  _pollTimer = setInterval(async () => {
+    notify(await apiGet());
+  }, POLL_MS);
 
-    // Also refresh when the tab becomes visible again
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') writeHeartbeat();
-    });
+  // Refresh when tab becomes visible after being hidden
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') {
+      notify(await apiPost(_sessionId));
+    }
+  });
 
-    // Set up real-time listener FIRST (read), then write heartbeat
-    _unsubSnapshot = _onSnapshot(
-      _colRef,
-      (snapshot) => {
-        const now = Date.now();
-        let count = 0;
-        snapshot.forEach((d) => {
-          const ts = d.data().lastSeen?.toMillis?.();
-          if (ts && now - ts < STALE_MS) count++;
-        });
-        if (typeof onCountChange === 'function') onCountChange(Math.max(1, count));
-      },
-      (err) => {
-        console.warn('[presence] snapshot error:', err.message);
-        // Keep badge showing at least 1
-      }
-    );
+  // Remove session on tab close
+  window.addEventListener('beforeunload', () => apiDelete(_sessionId));
 
-    // Write heartbeat after listener is live
-    await writeHeartbeat();
-    _heartbeatTimer = setInterval(writeHeartbeat, HEARTBEAT_MS);
-
-    return () => {
-      clearInterval(_heartbeatTimer);
-      _unsubSnapshot?.();
-      removeSession();
-    };
-  } catch (e) {
-    console.warn('[presence] init failed:', e.message);
-    return () => {};
-  }
+  return () => {
+    clearInterval(_heartbeatTimer);
+    clearInterval(_pollTimer);
+    apiDelete(_sessionId);
+  };
 }
