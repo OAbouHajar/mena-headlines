@@ -422,11 +422,11 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     background: var(--bg-surface);
 }
 .stats-panel-header h3 {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--text-muted);
+    color: #d0dce8;
     margin: 0;
 }
 .stats-close-btn {
@@ -1357,7 +1357,7 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     text-align: center;
 }
 .flight-country-name {
-    color: var(--text-secondary);
+    color: #dde6f0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1378,18 +1378,17 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     transition: width 0.4s ease;
 }
 .flight-country-count {
-    color: var(--text-primary);
+    color: #f0f4f8;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     min-width: 24px;
     text-align: right;
 }
 .flight-update-time {
     font-size: 10px;
-    color: var(--text-muted);
+    color: #7a96b0;
     text-align: center;
     padding: 8px 0 4px;
-    opacity: 0.6;
 }
 
 /* ============================================================
@@ -1999,7 +1998,7 @@ body.intel-open { overflow: hidden; }
 .map-legend-label {
     font-size: 10px;
     font-weight: 600;
-    color: var(--text-muted);
+    color: #b0c8e0;
     letter-spacing: 0.04em;
 }
 .map-legend-sep {
@@ -2082,7 +2081,7 @@ body.intel-open { overflow: hidden; }
 }
 .tension-sublabel {
     font-size: 10px;
-    color: var(--text-muted, #6c7a8a);
+    color: #8ea8c0;
     margin-top: 3px;
 }
 .tension-bar-track {
@@ -2117,9 +2116,8 @@ body.intel-open { overflow: hidden; }
 .tension-pill-green  { background: rgba(76,175,80,0.15);   color: #4caf7d; }
 .tension-note {
     font-size: 9.5px;
-    color: var(--text-muted, #6c7a8a);
+    color: #7a96b0;
     margin-top: 8px;
-    opacity: 0.75;
 }
 
 /* Section grouping */
@@ -2128,11 +2126,11 @@ body.intel-open { overflow: hidden; }
 }
 
 .stats-section-title {
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 10.5px;
+    font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--text-muted, #6c7a8a);
+    color: #9eb8d0;
     margin-bottom: 8px;
 }
 
@@ -2156,7 +2154,7 @@ body.intel-open { overflow: hidden; }
 
 .stat-card-label {
     font-size: 10px;
-    color: var(--text-muted, #6c7a8a);
+    color: #8ea8c0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2164,8 +2162,8 @@ body.intel-open { overflow: hidden; }
 
 .stat-price {
     font-size: 15px;
-    font-weight: 600;
-    color: var(--text-primary, #e0e8f0);
+    font-weight: 700;
+    color: #f0f4f8;
     white-space: nowrap;
 }
 
@@ -2174,7 +2172,7 @@ body.intel-open { overflow: hidden; }
 .stat-unit {
     font-size: 10px;
     font-weight: 400;
-    color: var(--text-muted, #6c7a8a);
+    color: #7a96b0;
 }
 
 .stat-change {
@@ -2195,7 +2193,7 @@ body.intel-open { overflow: hidden; }
 .stat-hero-value {
     font-size: 22px;
     font-weight: 700;
-    color: var(--text-primary, #e0e8f0);
+    color: #f0f4f8;
     line-height: 1;
 }
 
@@ -2225,7 +2223,7 @@ body.intel-open { overflow: hidden; }
 
 .alert-text {
     flex: 1;
-    color: var(--text-primary, #e0e8f0);
+    color: #dde8f2;
     line-height: 1.35;
     min-width: 0;
     overflow: hidden;
@@ -2237,7 +2235,7 @@ body.intel-open { overflow: hidden; }
 .alert-date {
     flex-shrink: 0;
     font-size: 10px;
-    color: var(--text-muted, #6c7a8a);
+    color: #8ea8c0;
 }
 
 /* Utility states */
@@ -2247,13 +2245,13 @@ body.intel-open { overflow: hidden; }
     padding: 20px;
     text-align: center;
     font-size: 12px;
-    color: var(--text-muted, #6c7a8a);
+    color: #8ea8c0;
 }
 .stats-error { color: #c94040; }
 
 .stats-acled-note {
     font-size: 10px;
-    color: var(--text-muted, #6c7a8a);
+    color: #7a96b0;
     margin: 4px 0 0;
     text-align: center;
 }

@@ -28,10 +28,19 @@ export function initStatsPanel() {
   // Flight panel close button
   document.getElementById('flightCloseBtn')?.addEventListener('click', () => toggleFlightPanel());
 
-  // Kick off flight ticker in background (header ticker data)
+  // Flight panel is open by default — load data immediately
+  _flightLoaded = true;
+  document.getElementById('flightBtn')?.classList.add('active');
   fetchOpenSky()
-    .then(data => { _flightData = data; _startFlightTicker(); })
-    .catch(() => { /* silent — flight ticker stays blank */ });
+    .then(data => {
+      _flightData = data;
+      _startFlightTicker();
+      _renderFlightPanel(data);
+    })
+    .catch(() => {
+      const body = document.getElementById('flightBody');
+      if (body) body.innerHTML = `<div class="stats-error">تعذّر الاتصال بـ OpenSky</div>`;
+    });
   _flightPollTimer = setInterval(() => {
     fetchOpenSky().then(data => {
       _flightData = data;
