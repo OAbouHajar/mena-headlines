@@ -166,8 +166,6 @@ function _tickerAdvance() {
 
 const _FLIGHT_ITEMS = [
   { id: 'count',   label: '✈️ رحلات نشطة', unit: '' },
-  { id: 'highest', label: '⬆️ أعلى ارتفاع', unit: 'م' },
-  { id: 'fastest', label: '⚡ أسرع طائرة',  unit: 'كم/س' },
 ];
 let _flightData       = null;
 let _flightIdx        = 0;
@@ -199,31 +197,12 @@ function _fillFlightSlide(el, item) {
 function _startFlightTicker() {
   if (!_flightData) return;
   _fillFlightSlide(document.getElementById('hfcSlideA'), _FLIGHT_ITEMS[0]);
-  if (!_flightTimer) {
-    _flightTimer = setInterval(_flightTickerAdvance, 8000);
-  }
+  if (_flightTimer) clearInterval(_flightTimer);
 }
 
 function _flightTickerAdvance() {
-  _flightIdx = (_flightIdx + 1) % _FLIGHT_ITEMS.length;
-  const nextItem   = _FLIGHT_ITEMS[_flightIdx];
-  const curSlotId  = `hfcSlide${_flightActiveSlot}`;
-  const nextSlotId = `hfcSlide${_flightActiveSlot === 'A' ? 'B' : 'A'}`;
-  const curSlide   = document.getElementById(curSlotId);
-  const nextSlide  = document.getElementById(nextSlotId);
-  if (!curSlide || !nextSlide) return;
-
-  nextSlide.className = 'hpc-slide hpc-below';
-  _fillFlightSlide(nextSlide, nextItem);
-  void nextSlide.offsetWidth;
-  curSlide.classList.add('hpc-exit-up');
-  nextSlide.classList.add('hpc-enter-up');
-
-  setTimeout(() => {
-    curSlide.className  = 'hpc-slide hpc-below';
-    nextSlide.className = 'hpc-slide';
-    _flightActiveSlot   = _flightActiveSlot === 'A' ? 'B' : 'A';
-  }, 400);
+  // Only one item now, no need to cycle
+  return;
 }
 
 function _renderFlightPanel(data) {
@@ -261,14 +240,7 @@ function _renderFlightPanel(data) {
     </div>
     <div class="stats-section">
       <div class="stats-cards-row">
-        <div class="stat-card">
-          <div class="stat-card-label">⬆️ أعلى ارتفاع</div>
-          <div class="stat-price">${data.highest.toLocaleString()} <span class="stat-unit">م</span></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">⚡ أسرع طائرة</div>
-          <div class="stat-price">${data.fastest.toLocaleString()} <span class="stat-unit">كم/س</span></div>
-        </div>
+        <!-- Stats removed by request -->
       </div>
     </div>
     <div class="flight-update-time">آخر تحديث: ${new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</div>
