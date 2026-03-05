@@ -2762,7 +2762,7 @@ a.news-source-label:hover { filter: brightness(1.2); }
         display: block;
     }
 
-    /* ---- Stats & Flight Panels — mobile bottom sheet ---- */
+    /* ---- Stats & Flight Panels — mobile full-screen overlay, hidden by default ---- */
     .stats-standalone {
         position: fixed;
         top: var(--header-height);
@@ -2776,7 +2776,7 @@ a.news-source-label:hover { filter: brightness(1.2); }
         transform: translateY(100%);
         transition: transform 0.3s var(--ease-out-expo);
     }
-    .stats-standalone:not(.closed) {
+    .stats-standalone.mobile-open {
         transform: translateY(0);
     }
     .stats-standalone.closed {

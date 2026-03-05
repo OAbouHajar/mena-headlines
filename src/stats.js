@@ -67,6 +67,7 @@ export function toggleStatsPanel() {
   if (!panel) return;
   const opening = panel.classList.contains('closed');
   panel.classList.toggle('closed');
+  panel.classList.toggle('mobile-open', opening);
   btn?.classList.toggle('active', opening);
   if (opening) {
     // Panel just opened — invalidate map size after transition
@@ -254,6 +255,7 @@ export function toggleFlightPanel() {
   if (!panel) return;
   const opening = panel.classList.contains('closed');
   panel.classList.toggle('closed');
+  panel.classList.toggle('mobile-open', opening);
   btn?.classList.toggle('active', opening);
   if (opening) {
     if (!_flightLoaded) {

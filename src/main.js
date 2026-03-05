@@ -467,14 +467,9 @@ $('#toggleSidebarBtn').addEventListener('click', toggleSidebar);
 if (sidebarBackdrop) {
   sidebarBackdrop.addEventListener('click', closeSidebarMobile);
 }
-// Start sidebar collapsed on mobile, and close panels that overlap
+// Start sidebar collapsed on mobile
 if (isMobile()) {
   sidebar.classList.add('collapsed');
-  // Close stats/flight panels on mobile so they don't overlay the entire screen
-  document.getElementById('statsPanel')?.classList.add('closed');
-  document.getElementById('statsBtn')?.classList.remove('active');
-  document.getElementById('flightPanel')?.classList.add('closed');
-  document.getElementById('flightBtn')?.classList.remove('active');
 }
 $('#statsBtn').addEventListener('click', () => toggleStatsPanel());
 $('#flightBtn').addEventListener('click', () => toggleFlightPanel());
@@ -696,6 +691,14 @@ render();
 new NewsTicker();
 initIntelPanel();
 initStatsPanel();
+
+// On mobile: force all panels closed so only the video grid shows
+if (isMobile()) {
+  document.getElementById('statsPanel')?.classList.add('closed');
+  document.getElementById('statsBtn')?.classList.remove('active');
+  document.getElementById('flightPanel')?.classList.add('closed');
+  document.getElementById('flightBtn')?.classList.remove('active');
+}
 
 // ============ Live Users Counter ============
 (function () {
