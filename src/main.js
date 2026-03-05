@@ -175,8 +175,9 @@ function renderChannelList() {
       (ch, index) => {
         const isActive = store.isActive(ch.id);
         const cat = getCategory(ch);
+        const canDrag = !isMobile();
         return `
-    <div class="channel-card ${isActive ? 'active' : ''}" data-id="${ch.id}" data-index="${index}" draggable="true">
+    <div class="channel-card ${isActive ? 'active' : ''}" data-id="${ch.id}" data-index="${index}"${canDrag ? ' draggable="true"' : ''}>
       <div class="channel-avatar" style="background:${ch.logo ? 'transparent' : ch.color}">
         ${ch.logo ? `<img src="${ch.logo}" alt="${esc(ch.name)}" class="channel-logo">` : initials(ch.name)}
       </div>
@@ -198,42 +199,44 @@ function renderChannelList() {
     )
     .join('');
 
-  // Drag and drop event listeners
-  const cards = channelList.querySelectorAll('.channel-card');
-  cards.forEach(card => {
-    card.addEventListener('dragstart', (e) => {
-      dragStartIndex = parseInt(card.dataset.index);
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', dragStartIndex);
-      card.classList.add('dragging');
-    });
+  // Drag and drop event listeners (desktop only)
+  if (!isMobile()) {
+    const cards = channelList.querySelectorAll('.channel-card');
+    cards.forEach(card => {
+      card.addEventListener('dragstart', (e) => {
+        dragStartIndex = parseInt(card.dataset.index);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', dragStartIndex);
+        card.classList.add('dragging');
+      });
 
-    card.addEventListener('dragover', (e) => {
-      e.preventDefault(); // Necessary to allow drop
-      e.dataTransfer.dropEffect = 'move';
-      card.classList.add('drag-over');
-    });
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Necessary to allow drop
+        e.dataTransfer.dropEffect = 'move';
+        card.classList.add('drag-over');
+      });
 
-    card.addEventListener('dragleave', () => {
-      card.classList.remove('drag-over');
-    });
+      card.addEventListener('dragleave', () => {
+        card.classList.remove('drag-over');
+      });
 
-    card.addEventListener('drop', (e) => {
-      e.preventDefault();
-      card.classList.remove('drag-over');
-      const dragEndIndex = parseInt(card.dataset.index);
-      
-      if (dragStartIndex !== null && dragStartIndex !== dragEndIndex) {
-        store.reorderChannel(dragStartIndex, dragEndIndex);
-      }
-    });
+      card.addEventListener('drop', (e) => {
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        const dragEndIndex = parseInt(card.dataset.index);
+        
+        if (dragStartIndex !== null && dragStartIndex !== dragEndIndex) {
+          store.reorderChannel(dragStartIndex, dragEndIndex);
+        }
+      });
 
-    card.addEventListener('dragend', () => {
-      card.classList.remove('dragging');
-      cards.forEach(c => c.classList.remove('drag-over'));
-      dragStartIndex = null;
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        cards.forEach(c => c.classList.remove('drag-over'));
+        dragStartIndex = null;
+      });
     });
-  });
+  }
 }
 
 function esc(str) {
@@ -396,7 +399,7 @@ sidebarTabs.forEach(tab => {
 
 
 // Sidebar channel clicks
-channelList.addEventListener('click', (e) => {
+function handleChannelCardClick(e) {
   const actionBtn = e.target.closest('[data-action]');
   if (actionBtn) {
     e.stopPropagation();
@@ -411,9 +414,23 @@ channelList.addEventListener('click', (e) => {
   const card = e.target.closest('.channel-card');
   if (card) {
     store.toggleChannel(card.dataset.id);
-    // Delay sidebar close so the toggle completes before DOM shifts
-    setTimeout(closeSidebarMobile, 180);
+    closeSidebarMobile();
   }
+}
+channelList.addEventListener('click', handleChannelCardClick);
+
+// On touch devices, use touchend as primary handler to avoid drag/click suppression
+let _touchMovedSidebar = false;
+channelList.addEventListener('touchstart', () => { _touchMovedSidebar = false; }, { passive: true });
+channelList.addEventListener('touchmove', () => { _touchMovedSidebar = true; }, { passive: true });
+channelList.addEventListener('touchend', (e) => {
+  if (_touchMovedSidebar) return; // was a scroll, not a tap
+  const card = e.target.closest('.channel-card');
+  const actionBtn = e.target.closest('[data-action]');
+  if (actionBtn || !card) return; // let click handler deal with action buttons
+  e.preventDefault(); // prevent ghost click
+  store.toggleChannel(card.dataset.id);
+  closeSidebarMobile();
 });
 
 // Video grid actions

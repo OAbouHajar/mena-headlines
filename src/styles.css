@@ -3106,6 +3106,10 @@ a.news-source-label:hover { filter: brightness(1.2); }
     .channel-card {
         padding: 10px 12px;
         gap: 12px;
+        touch-action: manipulation;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
     }
 
     .channel-actions {
