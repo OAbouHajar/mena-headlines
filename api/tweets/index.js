@@ -11,15 +11,16 @@ const http  = require('http');
 // Official gov/org RSS sources — grouped by country, linked to X handles
 const SOURCES = [
   // 🇺🇸 US Government & Policy
-  { handle: 'WhiteHouse',    label: 'White House',   flag: '🇺🇸', group: 'us',     rss: 'https://www.whitehouse.gov/briefing-room/statements-and-releases/feed/' },
-  { handle: 'StateDept',     label: 'Politico',      flag: '🇺🇸', group: 'us',     rss: 'https://www.politico.com/rss/politicopicks.xml' },
-  { handle: 'DeptofDefense', label: 'AP Politics',   flag: '🇺🇸', group: 'us',     rss: 'https://feeds.apnews.com/rss/apf-politics' },
+  { handle: 'WhiteHouse',    label: 'White House',   flag: '🇺🇸', group: 'us',     rss: 'https://www.cbsnews.com/latest/rss/politics' },
+  { handle: 'StateDept',     label: 'US Policy',     flag: '🇺🇸', group: 'us',     rss: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { handle: 'DeptofDefense', label: 'AP Intl',       flag: '🇺🇸', group: 'us',     rss: 'https://feeds.apnews.com/rss/apf-intlnews' },
   // 🇮🇱 Israel
   { handle: 'netanyahu',     label: 'Israel PM',     flag: '🇮🇱', group: 'israel', rss: 'https://www.timesofisrael.com/feed/' },
   { handle: 'IDF',           label: 'IDF / JPost',   flag: '🇮🇱', group: 'israel', rss: 'https://www.jpost.com/rss/rssfeedsfrontpage.aspx' },
   // 🇮🇷 Iran
   { handle: 'khamenei_ir',   label: 'Khamenei',      flag: '🇮🇷', group: 'iran',   rss: 'https://english.khamenei.ir/rss/' },
   { handle: 'IranMFA_Media', label: 'Iran Analysis', flag: '🇮🇷', group: 'iran',   rss: 'https://www.al-monitor.com/rss' },
+  { handle: 'PressTV',       label: 'PressTV',       flag: '🇮🇷', group: 'iran',   rss: 'https://www.presstv.ir/RSS' },
 ];
 
 let _cache     = null;
