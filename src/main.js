@@ -481,6 +481,27 @@ function closeSidebarMobile() {
   }
 }
 
+// Swipe-to-close sidebar on mobile
+(function initSwipeToClose() {
+  let startX = 0;
+  let tracking = false;
+  sidebar.addEventListener('touchstart', (e) => {
+    if (!isMobile() || sidebar.classList.contains('collapsed')) return;
+    startX = e.touches[0].clientX;
+    tracking = true;
+  }, { passive: true });
+  sidebar.addEventListener('touchend', (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    const isRtl = document.documentElement.dir === 'rtl';
+    // Swipe left (LTR) or right (RTL) to close
+    if ((!isRtl && dx < -60) || (isRtl && dx > 60)) {
+      closeSidebarMobile();
+    }
+  }, { passive: true });
+})();
+
 $('#toggleSidebarBtn').addEventListener('click', toggleSidebar);
 if (sidebarBackdrop) {
   sidebarBackdrop.addEventListener('click', closeSidebarMobile);

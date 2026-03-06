@@ -2612,8 +2612,8 @@ a.news-source-label:hover { filter: brightness(1.2); }
 /* ── Mobile (≤768px) — major layout changes ───────────────────────────── */
 @media (max-width: 768px) {
     :root {
-        --header-height: 48px;
-        --ticker-height: 44px;
+        --header-height: 50px;
+        --ticker-height: 40px;
         --sidebar-width: 100%;
     }
 
@@ -2623,82 +2623,116 @@ a.news-source-label:hover { filter: brightness(1.2); }
         height: -webkit-fill-available;
     }
 
-    /* ---- Header ---- */
+    /* ---- Header — clean mobile bar ---- */
     .header {
         height: var(--header-height);
-        padding: 0 10px;
-        gap: 6px;
+        padding: 0 12px;
+        gap: 8px;
         position: sticky;
         top: 0;
-        z-index: 200;
+        z-index: 500;
     }
 
     .header-left {
-        gap: 8px;
+        gap: 10px;
         min-width: 0;
+        flex: 1;
     }
 
     .header-logo {
-        width: 24px;
-        height: 24px;
+        width: 26px;
+        height: 26px;
     }
 
     .header h1 {
-        font-size: 11px;
+        font-size: 12px;
         letter-spacing: 0.04em;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 110px;
+        max-width: 140px;
     }
 
-    /* Hide price tickers — already hidden at 900px but be explicit */
+    /* Hide price tickers */
     .header-price-bar {
         display: none !important;
     }
 
-    /* Header controls: only show essential buttons */
+    /* Header controls: well-spaced icon strip */
     .header-controls {
-        gap: 3px;
+        gap: 2px;
         margin-left: auto;
+        flex-shrink: 0;
     }
 
+    /* All text labels hidden — icon-only mode */
     .header-controls .btn span {
         display: none;
     }
     .header-controls .btn {
-        padding: 6px 7px;
-        min-width: 0;
+        padding: 0;
+        min-width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .header-controls .btn:active {
+        background: rgba(78,122,160,0.15);
+    }
+    .header-controls .btn svg {
+        width: 18px;
+        height: 18px;
     }
 
-    /* Hide less critical header buttons on mobile */
-    .header-controls .btn-intel span,
-    .header-controls .btn-stats span,
-    .header-controls .btn-flight span {
-        display: none;
-    }
-
-    /* Smaller icon buttons on mobile */
+    /* Icon buttons uniform size */
     .btn-icon {
-        width: 32px;
-        height: 32px;
+        width: 40px;
+        height: 40px;
+        border: none;
     }
 
-    /* Hide contributor, github, facebook buttons on small screens */
+    /* Sidebar toggle bigger on mobile */
+    #toggleSidebarBtn {
+        width: 40px;
+        height: 40px;
+    }
+    #toggleSidebarBtn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Hide non-essential header items */
     .header-controls > a.btn-icon,
-    .contributor-area {
+    .contributor-area,
+    .layout-group,
+    #theatreBtn,
+    #langToggleBtn {
         display: none;
     }
 
-    /* Live users badge compact */
+    /* Auth area compact */
+    .auth-area .btn {
+        padding: 0;
+        min-width: 40px;
+        height: 40px;
+    }
+
+    /* Refresh button keep */
+    #refreshBtn {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* Live users badge — pill style */
     .live-users-badge {
-        padding: 2px 7px 2px 5px;
-        font-size: 10px;
-        gap: 3px;
-    }
-
-    .layout-group {
-        display: none;
+        padding: 4px 8px 4px 6px;
+        font-size: 11px;
+        gap: 4px;
+        border-radius: 20px;
     }
 
     /* ---- Main Container ---- */
@@ -2709,41 +2743,42 @@ a.news-source-label:hover { filter: brightness(1.2); }
         min-height: calc(100dvh - var(--header-height) - var(--ticker-height));
     }
 
-    /* ---- Sidebar — mobile overlay ---- */
+    /* ---- Sidebar — mobile drawer overlay ---- */
     .sidebar {
         position: fixed;
-        top: var(--header-height);
+        top: 0;
         left: 0;
         bottom: 0;
-        width: 85vw;
-        max-width: 340px;
-        z-index: 150;
+        width: 82vw;
+        max-width: 320px;
+        z-index: 9999;
         transform: translateX(-100%);
-        transition: transform 0.3s var(--ease-out-expo);
+        transition: transform 0.32s var(--ease-out-expo);
         box-shadow: none;
-        border-right: 1px solid var(--border);
+        border-right: 1px solid var(--border-light);
+        background: var(--bg-surface);
     }
     [dir="rtl"] .sidebar {
         left: auto;
         right: 0;
         transform: translateX(100%);
         border-right: none;
-        border-left: 1px solid var(--border);
+        border-left: 1px solid var(--border-light);
     }
 
     .sidebar:not(.collapsed) {
         transform: translateX(0);
-        box-shadow: 8px 0 40px rgba(0,0,0,0.7);
+        box-shadow: 12px 0 48px rgba(0,0,0,0.8);
         pointer-events: auto;
     }
     [dir="rtl"] .sidebar:not(.collapsed) {
-        box-shadow: -8px 0 40px rgba(0,0,0,0.7);
+        box-shadow: -12px 0 48px rgba(0,0,0,0.8);
     }
 
     .sidebar.collapsed {
         transform: translateX(-100%);
-        width: 85vw;
-        max-width: 340px;
+        width: 82vw;
+        max-width: 320px;
         opacity: 1;
         pointer-events: none;
     }
@@ -2751,20 +2786,36 @@ a.news-source-label:hover { filter: brightness(1.2); }
         transform: translateX(100%);
     }
 
-    /* Mobile backdrop for sidebar */
+    /* Mobile backdrop — covers everything */
     .sidebar-backdrop {
         display: none;
         position: fixed;
         inset: 0;
-        top: var(--header-height);
-        background: rgba(0,0,0,0.55);
-        z-index: 149;
+        background: rgba(0,0,0,0.6);
+        z-index: 9998;
+        -webkit-backdrop-filter: blur(2px);
+        backdrop-filter: blur(2px);
     }
     .sidebar-backdrop.visible {
         display: block;
     }
 
-    /* ---- Stats & Flight Panels — mobile full-screen overlay, hidden by default ---- */
+    /* Sidebar inner polish */
+    .sidebar-tabs {
+        padding-top: env(safe-area-inset-top, 0);
+    }
+    .sidebar-tab {
+        padding: 14px 0;
+        font-size: 12px;
+    }
+    .sidebar-header {
+        padding: 12px 14px;
+    }
+    .sidebar-content {
+        padding: 6px;
+    }
+
+    /* ---- Stats & Flight Panels — bottom sheet overlay ---- */
     .stats-standalone {
         position: fixed;
         top: var(--header-height);
@@ -2772,7 +2823,7 @@ a.news-source-label:hover { filter: brightness(1.2); }
         right: 0;
         bottom: 0;
         width: 100% !important;
-        z-index: 140;
+        z-index: 600;
         border-right: none;
         border-left: none;
         transform: translateY(100%);
@@ -2792,18 +2843,21 @@ a.news-source-label:hover { filter: brightness(1.2); }
         flex: 1;
         min-height: 50vh;
         overflow: visible;
+        /* Keep iframes from creating stacking issues */
+        position: relative;
+        z-index: 1;
     }
 
     .video-grid {
         grid-template-columns: 1fr !important;
         grid-auto-rows: minmax(220px, 56vw);
-        gap: 4px;
-        padding: 4px;
+        gap: 6px;
+        padding: 6px;
         height: auto !important;
         min-height: 50vh;
     }
 
-    /* Disable focus-mode dimming on mobile (annoying with touch) */
+    /* Disable focus-mode dimming on mobile */
     .video-grid:hover .video-cell:not(:hover) {
         opacity: 1;
         filter: none;
@@ -2811,7 +2865,11 @@ a.news-source-label:hover { filter: brightness(1.2); }
     }
 
     .video-cell {
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius);
+        z-index: auto;
+    }
+    .video-cell:hover {
+        z-index: auto;
     }
 
     /* Always show overlay on mobile for touch access */
@@ -2819,18 +2877,19 @@ a.news-source-label:hover { filter: brightness(1.2); }
         opacity: 1;
     }
     .cell-overlay-bar {
-        height: 40px;
-        padding: 0 8px;
+        height: 42px;
+        padding: 0 10px;
         background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
     }
 
     .cell-name {
-        font-size: 12px;
+        font-size: 12.5px;
+        font-weight: 600;
     }
 
     .cell-btn {
-        width: 34px;
-        height: 34px;
+        width: 36px;
+        height: 36px;
     }
 
     /* ---- News Ticker ---- */
@@ -2838,10 +2897,11 @@ a.news-source-label:hover { filter: brightness(1.2); }
         height: var(--ticker-height);
         position: sticky;
         bottom: 0;
+        z-index: 50;
     }
 
     .ticker-item {
-        font-size: 12.5px;
+        font-size: 12px;
         padding: 2px 6px;
         gap: 5px;
     }
@@ -2860,6 +2920,10 @@ a.news-source-label:hover { filter: brightness(1.2); }
         width: 100% !important;
         max-width: 100%;
         border-left: none;
+        z-index: 700;
+    }
+    .intel-backdrop {
+        z-index: 699;
     }
     [dir="rtl"] .intel-panel {
         border-right: none;
@@ -2897,57 +2961,60 @@ a.news-source-label:hover { filter: brightness(1.2); }
         font-size: 11px;
     }
 
-    /* ---- Modal — full screen on mobile ---- */
+    /* ---- Modal — bottom sheet ---- */
     .modal-overlay {
         align-items: flex-end;
+        z-index: 8000;
     }
 
     .modal {
         max-width: 100%;
         width: 100%;
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        border-radius: 16px 16px 0 0;
         max-height: 92vh;
         overflow-y: auto;
     }
 
     .modal-header {
-        padding: 16px 18px;
+        padding: 18px 20px;
         position: sticky;
         top: 0;
         z-index: 10;
     }
 
     .modal-header h2 {
-        font-size: 15px;
+        font-size: 16px;
     }
 
     .modal-body {
-        padding: 16px 18px;
+        padding: 16px 20px;
         gap: 14px;
     }
 
     .modal-footer {
-        padding: 14px 18px;
+        padding: 14px 20px;
         position: sticky;
         bottom: 0;
     }
 
     /* ---- Toasts ---- */
     .toast-container {
-        left: 10px;
-        right: 10px;
-        bottom: 60px;
+        left: 12px;
+        right: 12px;
+        bottom: 56px;
+        z-index: 10000;
     }
     [dir="rtl"] .toast-container {
-        left: 10px;
-        right: 10px;
+        left: 12px;
+        right: 12px;
     }
 
     .toast {
         min-width: 0;
         width: 100%;
-        font-size: 12px;
-        padding: 10px 14px;
+        font-size: 13px;
+        padding: 12px 16px;
+        border-radius: var(--radius);
     }
 
     /* ---- Dropdowns ---- */
@@ -2958,6 +3025,7 @@ a.news-source-label:hover { filter: brightness(1.2); }
         right: 10px;
         min-width: 0;
         width: auto;
+        z-index: 1000;
     }
     [dir="rtl"] .auth-dropdown {
         left: 10px;
@@ -2971,6 +3039,7 @@ a.news-source-label:hover { filter: brightness(1.2); }
         right: 10px;
         min-width: 0;
         width: auto;
+        z-index: 1000;
     }
 
     /* ---- Empty state ---- */
@@ -2997,7 +3066,7 @@ a.news-source-label:hover { filter: brightness(1.2); }
 
     /* ---- Stats panel widgets ---- */
     .stats-map {
-        height: 160px;
+        height: 180px;
     }
 
     .stats-cards-row {
@@ -3006,7 +3075,7 @@ a.news-source-label:hover { filter: brightness(1.2); }
     }
 
     .stat-card {
-        padding: 8px 10px;
+        padding: 10px 12px;
     }
 
     .stat-price {
@@ -3026,47 +3095,47 @@ a.news-source-label:hover { filter: brightness(1.2); }
 @media (max-width: 480px) {
     .header {
         padding: 0 8px;
-        gap: 4px;
+        gap: 6px;
     }
 
     .header h1 {
-        font-size: 10px;
-        max-width: 80px;
+        font-size: 11px;
+        max-width: 90px;
     }
 
     .header-logo {
         display: none;
     }
 
-    /* Hide even more buttons on very small screens */
-    #theatreBtn,
-    #refreshBtn,
-    #langToggleBtn {
+    /* Further reduce buttons */
+    .header-controls .btn,
+    .btn-icon {
+        min-width: 36px;
+        width: 36px;
+        height: 36px;
+    }
+
+    #refreshBtn {
         display: none;
     }
 
-    .btn-icon {
-        width: 30px;
-        height: 30px;
-    }
-
     .header-controls {
-        gap: 2px;
+        gap: 1px;
     }
 
     .video-grid {
-        grid-auto-rows: minmax(180px, 52vw);
-        gap: 3px;
-        padding: 3px;
+        grid-auto-rows: minmax(200px, 54vw);
+        gap: 4px;
+        padding: 4px;
     }
 
     .sidebar:not(.collapsed) {
-        width: 100vw;
+        width: 92vw;
         max-width: 100vw;
     }
 
     .news-ticker {
-        height: 38px;
+        height: 36px;
     }
 
     .ticker-item {
@@ -3074,15 +3143,20 @@ a.news-source-label:hover { filter: brightness(1.2); }
     }
 
     .intel-panel-header {
-        padding: 12px 12px;
+        padding: 12px 14px;
     }
 
     .intel-panel-body {
-        padding: 8px 12px 20px;
+        padding: 8px 14px 20px;
     }
 
     .modal-body {
-        padding: 14px 14px;
+        padding: 14px 16px;
+    }
+
+    .cell-overlay-bar {
+        height: 38px;
+        padding: 0 8px;
     }
 }
 
@@ -3090,21 +3164,21 @@ a.news-source-label:hover { filter: brightness(1.2); }
 @media (hover: none) and (pointer: coarse) {
     /* Larger touch targets */
     .btn-icon {
-        min-width: 36px;
-        min-height: 36px;
+        min-width: 40px;
+        min-height: 40px;
     }
 
     .btn-icon-sm {
-        min-width: 30px;
-        min-height: 30px;
+        min-width: 32px;
+        min-height: 32px;
     }
 
     .btn {
-        min-height: 36px;
+        min-height: 40px;
     }
 
     .channel-card {
-        padding: 10px 12px;
+        padding: 12px 14px;
         gap: 12px;
         touch-action: manipulation;
         -webkit-touch-callout: none;
@@ -3114,12 +3188,12 @@ a.news-source-label:hover { filter: brightness(1.2); }
 
     .channel-actions {
         opacity: 1;
-        gap: 4px;
+        gap: 6px;
     }
 
     .channel-actions .btn-icon-sm {
-        min-width: 32px;
-        min-height: 32px;
+        min-width: 34px;
+        min-height: 34px;
     }
 
     /* Disable focus-mode dim on touch */
@@ -3135,8 +3209,8 @@ a.news-source-label:hover { filter: brightness(1.2); }
     }
 
     .cell-btn {
-        width: 36px;
-        height: 36px;
+        width: 38px;
+        height: 38px;
     }
 
     /* Disable dragging on touch */
@@ -3146,12 +3220,13 @@ a.news-source-label:hover { filter: brightness(1.2); }
 
     /* Sidebar tabs taller */
     .sidebar-tab {
-        padding: 14px 0;
+        padding: 15px 0;
+        font-size: 12.5px;
     }
 
     /* Update items easier to tap */
     .update-item {
-        padding: 12px 12px;
+        padding: 12px 14px;
     }
 
     /* Ticker items tappable */
