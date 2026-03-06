@@ -527,6 +527,7 @@ if (isMobile()) {
 $('#statsBtn').addEventListener('click', () => toggleStatsPanel());
 $('#flightBtn').addEventListener('click', () => toggleFlightPanel());
 $('#addChannelBtn').addEventListener('click', () => openModal());
+$('#addChannelBtnBottom').addEventListener('click', () => openModal());
 $('#intelBtn').addEventListener('click', () => openIntelPanel());
 $('#theatreBtn').addEventListener('click', () => document.body.classList.toggle('theatre'));
 $('#refreshBtn').addEventListener('click', () => {
