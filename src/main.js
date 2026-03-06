@@ -174,16 +174,17 @@ function renderChannelList() {
     .map(
       (ch, index) => {
         const isActive = store.isActive(ch.id);
+        const hasLive = !!ch.channelId;
         const cat = getCategory(ch);
-        const canDrag = !isMobile();
+        const canDrag = !isMobile() && hasLive;
         return `
-    <div class="channel-card ${isActive ? 'active' : ''}" data-id="${ch.id}" data-index="${index}"${canDrag ? ' draggable="true"' : ''}>
+    <div class="channel-card ${isActive ? 'active' : ''} ${!hasLive ? 'no-live' : ''}" data-id="${ch.id}" data-index="${index}"${canDrag ? ' draggable="true"' : ''}>
       <div class="channel-avatar" style="background:${ch.logo ? 'transparent' : ch.color}">
         ${ch.logo ? `<img src="${ch.logo}" alt="${esc(ch.name)}" class="channel-logo">` : initials(ch.name)}
       </div>
       <div class="channel-info">
-        <div class="channel-name">${esc(ch.name)}${ch.channelId ? '' : ' ⚠️'}</div>
-        <div class="channel-status-line">${cat}${isActive ? ` · ${t('liveTag')}` : ''}</div>
+        <div class="channel-name">${esc(ch.name)}</div>
+        <div class="channel-status-line">${hasLive ? (cat + (isActive ? ` · ${t('liveTag')}` : '')) : t('noLiveAvailable')}</div>
       </div>
       ${isActive ? `<span class="ch-live-chip">${t('liveTag')}</span>` : ''}
       <div class="channel-actions">
@@ -246,6 +247,30 @@ function esc(str) {
 }
 
 // ============ Render: Video Grid ============
+function liveCellHTML(ch, url) {
+  return `
+        <iframe src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+        <div class="cell-overlay">
+          <div class="cell-overlay-bar">
+            <span class="cell-name">${esc(ch.name)}</span>
+            <div class="cell-actions">
+              <button class="cell-btn" data-action="newtab" data-handle="${esc(ch.handle)}" title="${t('openYT')}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </button>
+              <button class="cell-btn" data-action="fullscreen" title="${t('fullscreen')}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              </button>
+              <button class="cell-btn" data-action="reload" title="${t('reload')}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              </button>
+              <button class="cell-btn danger" data-action="remove" data-id="${ch.id}" title="Remove">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>`;
+}
+
 function renderGrid() {
   videoGrid.style.gridTemplateColumns = gridCols(store.active.length);
 
@@ -284,32 +309,19 @@ function renderGrid() {
 
     if (url) {
       cell.innerHTML = `
-        <iframe src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
-        <div class="cell-overlay">
-          <div class="cell-overlay-bar">
-            <span class="cell-name">${esc(ch.name)}</span>
-            <div class="cell-actions">
-              <button class="cell-btn" data-action="newtab" data-handle="${esc(ch.handle)}" title="${t('openYT')}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              </button>
-              <button class="cell-btn" data-action="fullscreen" title="${t('fullscreen')}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-              </button>
-              <button class="cell-btn" data-action="reload" title="${t('reload')}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-              </button>
-              <button class="cell-btn danger" data-action="remove" data-id="${ch.id}" title="Remove">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-          </div>
+        <div class="cell-offline-placeholder">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:0.3"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><line x1="2" y1="3" x2="22" y2="17" stroke-width="1.5"/></svg>
+          <p class="cell-offline-name">${esc(ch.name)}</p>
+          <p class="cell-offline-msg">${t('noLiveAvailable')}</p>
+          <button class="cell-btn-ghost" data-action="try-stream" data-id="${ch.id}" data-url="${esc(url)}" data-handle="${esc(ch.handle)}">${t('tryStream')}</button>
         </div>`;
     } else {
       cell.innerHTML = `
         <div class="cell-no-stream">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.25"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <p>${esc(ch.name)}</p>
-          <button class="cell-btn-ghost" data-action="edit-from-grid" data-id="${ch.id}">${t('setStreamId')}</button>
+          <p class="cell-offline-msg">${t('noLiveAvailable')}</p>
+          <button class="cell-btn-ghost" data-action="edit-from-grid" data-id="${ch.id}">${t('editChannelBtn')}</button>
         </div>`;
     }
 
@@ -413,6 +425,7 @@ function handleChannelCardClick(e) {
   }
   const card = e.target.closest('.channel-card');
   if (card) {
+    if (card.classList.contains('no-live')) return;
     store.toggleChannel(card.dataset.id);
     closeSidebarMobile();
   }
@@ -428,6 +441,7 @@ channelList.addEventListener('touchend', (e) => {
   const card = e.target.closest('.channel-card');
   const actionBtn = e.target.closest('[data-action]');
   if (actionBtn || !card) return; // let click handler deal with action buttons
+  if (card.classList.contains('no-live')) return; // disabled channel
   e.preventDefault(); // prevent ghost click
   store.toggleChannel(card.dataset.id);
   closeSidebarMobile();
@@ -439,6 +453,14 @@ videoGrid.addEventListener('click', (e) => {
   if (!btn) return;
   const action = btn.dataset.action;
 
+  if (action === 'try-stream') {
+    const cell = btn.closest('.video-cell');
+    const url = btn.dataset.url;
+    const chId = btn.dataset.id;
+    const ch = store.getChannel(chId);
+    if (ch && url) { cell.innerHTML = liveCellHTML(ch, url); }
+    return;
+  }
   if (action === 'newtab') {
     window.open(channelPageUrl(btn.dataset.handle), '_blank');
   }
@@ -527,6 +549,7 @@ if (isMobile()) {
 $('#statsBtn').addEventListener('click', () => toggleStatsPanel());
 $('#flightBtn').addEventListener('click', () => toggleFlightPanel());
 $('#addChannelBtn').addEventListener('click', () => openModal());
+$('#addChannelFooterBtn').addEventListener('click', () => openModal());
 $('#intelBtn').addEventListener('click', () => openIntelPanel());
 $('#theatreBtn').addEventListener('click', () => document.body.classList.toggle('theatre'));
 $('#refreshBtn').addEventListener('click', () => {

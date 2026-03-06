@@ -35,6 +35,9 @@ const translations = {
     openYT: 'Open on YouTube',
     fullscreen: 'Fullscreen',
     reload: 'Reload',
+    noLiveAvailable: 'No live available now',
+    tryStream: 'Try Stream',
+    addChannelFooter: 'Add Channel',
     // Toasts
     toastAdded: (n) => `Added ${n}`,
     toastAddedWarn: (n) => `Added ${n} — edit to add Channel ID`,
@@ -275,6 +278,9 @@ const translations = {
     // Grid
     setStreamId: 'تعيين معرّف البث',
     liveTag: 'مباشر',
+    noLiveAvailable: 'لا يوجد بث مباشر الآن',
+    tryStream: 'حاول البث',
+    addChannelFooter: 'إضافة قناة',
     // Flight panel
     flightActiveLabel: 'رحلة نشطة في المنطقة',
     flightByCountry: 'الأجواء حسب الدولة',
