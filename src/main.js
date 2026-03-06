@@ -313,7 +313,7 @@ function renderGrid() {
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:0.3"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><line x1="2" y1="3" x2="22" y2="17" stroke-width="1.5"/></svg>
           <p class="cell-offline-name">${esc(ch.name)}</p>
           <p class="cell-offline-msg">${t('noLiveAvailable')}</p>
-          <button class="cell-btn-ghost" data-action="try-stream" data-id="${ch.id}" data-url="${url}" data-handle="${esc(ch.handle)}">${t('tryStream')}</button>
+          <button class="cell-btn-ghost" data-action="try-stream" data-id="${ch.id}" data-url="${esc(url)}" data-handle="${esc(ch.handle)}">${t('tryStream')}</button>
         </div>`;
     } else {
       cell.innerHTML = `
@@ -459,6 +459,7 @@ videoGrid.addEventListener('click', (e) => {
     const chId = btn.dataset.id;
     const ch = store.getChannel(chId);
     if (ch && url) { cell.innerHTML = liveCellHTML(ch, url); }
+    return;
   }
   if (action === 'newtab') {
     window.open(channelPageUrl(btn.dataset.handle), '_blank');
