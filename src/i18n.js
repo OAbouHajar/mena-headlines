@@ -134,6 +134,9 @@ const translations = {
     // Grid
     setStreamId: 'Set stream ID',
     liveTag: 'Live',
+    offlineTag: 'Offline',
+    channelOfflineTooltip: 'No live stream — channel is currently offline',
+    addChannelBtn: 'Add Channel',
     // Flight panel
     flightActiveLabel: 'active flights in region',
     flightByCountry: 'Airspace by Country',
@@ -275,6 +278,9 @@ const translations = {
     // Grid
     setStreamId: 'تعيين معرّف البث',
     liveTag: 'مباشر',
+    offlineTag: 'غير متاح',
+    channelOfflineTooltip: 'لا يوجد بث مباشر — القناة غير متاحة حالياً',
+    addChannelBtn: 'إضافة قناة',
     // Flight panel
     flightActiveLabel: 'رحلة نشطة في المنطقة',
     flightByCountry: 'الأجواء حسب الدولة',

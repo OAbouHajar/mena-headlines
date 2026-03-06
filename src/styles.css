@@ -658,6 +658,16 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 }
 .channel-card.active::before { opacity: 1; }
 
+/* Offline / no-stream channel card */
+.channel-card.offline {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+.channel-card.offline:hover {
+    background: transparent;
+    border-color: transparent;
+}
+
 .channel-info {
     display: flex;
     flex-direction: column;
@@ -730,6 +740,50 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     border-radius: 50%;
     background: var(--alert-light);
     animation: pulseLive 2.2s infinite ease-in-out;
+}
+
+/* OFFLINE chip in sidebar */
+.ch-offline-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 7px;
+    background: rgba(100,100,100,0.12);
+    color: var(--text-muted);
+    border: 1px solid rgba(100,100,100,0.22);
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+/* Add Channel footer button */
+.add-channel-footer {
+    padding: 8px;
+    flex-shrink: 0;
+}
+.btn-add-channel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(78,122,160,0.08);
+    border: 1px dashed rgba(78,122,160,0.30);
+    border-radius: var(--radius-sm);
+    color: var(--accent-light);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+.btn-add-channel:hover {
+    background: rgba(78,122,160,0.16);
+    border-color: rgba(78,122,160,0.55);
+    color: var(--text-primary);
 }
 
 .channel-actions {
