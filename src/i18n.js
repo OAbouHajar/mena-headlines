@@ -308,7 +308,7 @@ const translations = {
     // Stats
     topStocks: 'أفضل 10 أسهم',
     // Chat
-    chat: 'الدردشة',
+    chat: 'ساحة الحوار',
     chatPlaceholder: 'اكتب رسالة…',
     chatSend: 'إرسال',
     chatUsername: 'اختر اسم العرض',
