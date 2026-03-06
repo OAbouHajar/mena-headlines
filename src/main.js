@@ -481,6 +481,41 @@ function closeSidebarMobile() {
   }
 }
 
+// Swipe-down-to-close sidebar on mobile (full-screen tile overlay)
+(function initSwipeToClose() {
+  let startY = 0;
+  let tracking = false;
+  sidebar.addEventListener('touchstart', (e) => {
+    if (!isMobile() || sidebar.classList.contains('collapsed')) return;
+    // Only track from the top area (tabs/header region)
+    const rect = sidebar.getBoundingClientRect();
+    if (e.touches[0].clientY - rect.top > 80) return;
+    startY = e.touches[0].clientY;
+    tracking = true;
+  }, { passive: true });
+  sidebar.addEventListener('touchend', (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const dy = e.changedTouches[0].clientY - startY;
+    // Swipe down to close
+    if (dy > 80) {
+      closeSidebarMobile();
+    }
+  }, { passive: true });
+})();
+
+// Inject mobile close button into sidebar tabs
+(function injectMobileCloseBtn() {
+  if (!isMobile()) return;
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-icon sidebar-close-mobile';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  closeBtn.addEventListener('click', closeSidebarMobile);
+  const tabsBar = sidebar.querySelector('.sidebar-tabs');
+  if (tabsBar) tabsBar.appendChild(closeBtn);
+})();
+
 $('#toggleSidebarBtn').addEventListener('click', toggleSidebar);
 if (sidebarBackdrop) {
   sidebarBackdrop.addEventListener('click', closeSidebarMobile);

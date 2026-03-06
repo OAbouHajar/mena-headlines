@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Azure Functions API",
   "private": true,
-  "engines": { "node": ">=18" },
+  "engines": { "node": ">=18 <21" },
   "dependencies": {
     "@azure/storage-blob": "^12.26.0",
-    "openai": "^6.25.0",
+    "openai": "6.25.0",
     "xml2js": "^0.6.2"
   }
 }
