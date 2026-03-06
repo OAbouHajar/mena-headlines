@@ -323,9 +323,16 @@ export function initChat() {
     usernameBar.classList.add('hidden');
   }
 
-  // Open by default
-  isOpen = true;
-  fab.classList.add('hidden');
+  // Open by default on desktop, closed on mobile
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  if (isMobile) {
+    isOpen = false;
+    panel.classList.add('closed');
+    fab.classList.remove('hidden');
+  } else {
+    isOpen = true;
+    fab.classList.add('hidden');
+  }
 
   // Events
   fab.addEventListener('click', openChat);

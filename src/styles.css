@@ -3750,17 +3750,17 @@ a.news-source-label:hover { filter: brightness(1.2); }
         left: 10px;
     }
     .chat-standalone {
-        /* On mobile, becomes a bottom sheet like other panels */
+        /* On mobile, full-screen overlay */
         position: fixed;
+        top: 0;
         bottom: 0;
         left: 0;
         right: 0;
         width: 100% !important;
-        height: 55vh;
-        max-height: 55vh;
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-        border: 1px solid var(--border-light);
-        border-bottom: none;
+        height: 100% !important;
+        max-height: 100vh;
+        border-radius: 0;
+        border: none;
         z-index: 600;
         transition: transform 0.28s var(--ease-out-expo), opacity 0.22s;
     }
@@ -3768,9 +3768,6 @@ a.news-source-label:hover { filter: brightness(1.2); }
         transform: translateY(100%);
         opacity: 0;
         pointer-events: none;
-    }
-    .chat-standalone.mobile-open {
-        transform: translateY(0);
     }
 }
 
