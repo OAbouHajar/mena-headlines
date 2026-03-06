@@ -156,41 +156,12 @@ async function resolveYouTubeChannel(input) {
   };
 }
 
-// ============ Live Status Detection ============
-// Tracks per-channelId: true = live, false = offline, null = unknown/unchecked
-const liveStatusMap = new Map();
-const LIVE_CHECK_TIMEOUT_MS = 8000;
-const LIVE_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-
-async function checkChannelLive(channelId) {
-  if (!channelId || !channelId.startsWith('UC')) return;
-  try {
-    // YouTube oEmbed returns 400 when the channel's /live URL has no active stream
-    const url = `https://www.youtube.com/oembed?url=https://www.youtube.com/channel/${encodeURIComponent(channelId)}/live&format=json`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), LIVE_CHECK_TIMEOUT_MS);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-    liveStatusMap.set(channelId, res.ok);
-  } catch (err) {
-    // Network error or timeout — leave status as-is (unknown if first check)
-    if (err.name !== 'AbortError') console.debug('[live-check] fetch error for', channelId, err.message);
-  }
-}
-
-async function checkAllChannelsLive() {
-  await Promise.allSettled(
-    store.channels.filter((ch) => ch.channelId).map((ch) => checkChannelLive(ch.channelId))
-  );
-  renderChannelList();
-}
-
+// ============ Channel Availability ============
 function isChannelOffline(ch) {
-  // No channelId means it can never show a live stream
-  if (!ch.channelId || !ch.channelId.startsWith('UC')) return true;
-  // If we have a confirmed status, use it
-  const status = liveStatusMap.get(ch.channelId);
-  return status === false;
+  // Only mark as unavailable when there is no channelId — these channels cannot embed at all.
+  // We do not attempt to probe YouTube for live status because YouTube's public endpoints
+  // (oEmbed, etc.) are unreliable proxies for live status and cause false positives.
+  return !ch.channelId || !ch.channelId.startsWith('UC');
 }
 
 // ============ Render: Active Count Badge ============
@@ -790,10 +761,6 @@ render();
 new NewsTicker();
 initIntelPanel();
 initStatsPanel();
-
-// Kick off live status checks and refresh every 5 minutes
-checkAllChannelsLive();
-setInterval(checkAllChannelsLive, LIVE_CHECK_INTERVAL_MS);
 
 // On mobile: force all panels closed so only the video grid shows
 if (isMobile()) {
