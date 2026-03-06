@@ -239,9 +239,11 @@ function promptUsername() {
 async function handleSend() {
   const text = chatInput.value.trim();
   if (!text) return;
+  // If no username set, default to anonymous
   if (!username) {
-    promptUsername();
-    return;
+    username = t('chatAnonymous');
+    localStorage.setItem(STORAGE_KEY, username);
+    usernameBar.classList.add('hidden');
   }
   if (text.length > 500) return;
 

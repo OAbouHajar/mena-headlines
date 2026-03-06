@@ -166,6 +166,7 @@ const translations = {
     chatDaysAgo: (d) => `${d}d ago`,
     chatMessageTooLong: 'Message is too long (max 500 chars)',
     chatNameRequired: 'Please set a display name first',
+    chatAnonymous: 'Anonymous',
   },
   ar: {
     appTitle: 'Middle East Live',
@@ -323,6 +324,7 @@ const translations = {
     chatDaysAgo: (d) => `${d}ي`,
     chatMessageTooLong: 'الرسالة طويلة جداً (الحد الأقصى 500 حرف)',
     chatNameRequired: 'يرجى تعيين اسم العرض أولاً',
+    chatAnonymous: 'مجهول',
   },
 };
 
