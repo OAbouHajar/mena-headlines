@@ -313,7 +313,7 @@ const translations = {
     chatSend: 'إرسال',
     chatUsername: 'اختر اسم العرض',
     chatUsernamePlaceholder: 'اسمك',
-    chatUsernameSet: 'تعيين',
+    chatUsernameSet: 'حفظ',
     chatEmpty: 'لا توجد رسائل بعد. ابدأ المحادثة!',
     chatReply: 'رد',
     chatReplyingTo: (name) => `رد على ${name}`,
