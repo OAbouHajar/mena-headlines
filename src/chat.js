@@ -1,5 +1,5 @@
 /**
- * Chat module — floating drawer with polling from /api/chat (Azure Blob Storage).
+ * Chat module — side panel with polling from /api/chat (Azure Blob Storage).
  * Anonymous users pick a display name stored in localStorage.
  * Supports replies and emoji reactions.
  */
@@ -12,7 +12,7 @@ const STORAGE_KEY   = 'ytmv_chat_username';
 const REACTIONS     = ['👍', '❤️', '😂', '😮', '👎'];
 
 // ─── DOM refs ────────────────────────────────────────────────────────────────
-let fab, badge, drawer, closeBtn, usernameBtn;
+let fab, badge, panel, closeBtn, usernameBtn;
 let usernameBar, usernameInput, usernameSetBtn;
 let messagesEl, emptyEl;
 let replyBar, replyText, replyCancel;
@@ -193,7 +193,7 @@ async function fullRefresh() {
 // ─── Actions ─────────────────────────────────────────────────────────────────
 function openChat() {
   isOpen = true;
-  drawer.classList.add('open');
+  panel.classList.remove('closed');
   fab.classList.add('hidden');
   unreadCount = 0;
   updateBadge();
@@ -203,7 +203,7 @@ function openChat() {
 
 function closeChat() {
   isOpen = false;
-  drawer.classList.remove('open');
+  panel.classList.add('closed');
   fab.classList.remove('hidden');
 }
 
@@ -300,7 +300,7 @@ async function handleReaction(msgId, emoji) {
 export function initChat() {
   fab            = document.getElementById('chatFab');
   badge          = document.getElementById('chatFabBadge');
-  drawer         = document.getElementById('chatDrawer');
+  panel          = document.getElementById('chatPanel');
   closeBtn       = document.getElementById('chatCloseBtn');
   usernameBtn    = document.getElementById('chatUsernameBtn');
   usernameBar    = document.getElementById('chatUsernameBar');
@@ -314,12 +314,16 @@ export function initChat() {
   chatInput      = document.getElementById('chatInput');
   sendBtn        = document.getElementById('chatSendBtn');
 
-  if (!fab || !drawer) return;
+  if (!fab || !panel) return;
 
   // If username already set, hide the prompt
   if (username) {
     usernameBar.classList.add('hidden');
   }
+
+  // Open by default
+  isOpen = true;
+  fab.classList.add('hidden');
 
   // Events
   fab.addEventListener('click', openChat);

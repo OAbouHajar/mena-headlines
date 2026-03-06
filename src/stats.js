@@ -6,6 +6,7 @@ let _pollTimer = null;
 let _headerTimer = null;
 let _map = null;
 let _markers = [];
+let _statsLoaded = false;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -16,32 +17,19 @@ export function initStatsPanel() {
   fetchAndUpdateHeader();
   _headerTimer = setInterval(fetchAndUpdateHeader, POLL_MS);
 
-  // Panel is open by default — load immediately
-  loadStats();
-  _pollTimer = setInterval(loadStats, POLL_MS);
-
-  // Re-validate map after first paint (panel is already visible)
-  setTimeout(() => _map?.invalidateSize(), 500);
+  // Panels are closed by default — defer data loading until first open
+  // (Stats data will load when toggleStatsPanel opens it)
+  // (Flight data will load when toggleFlightPanel opens it)
 
   // Close button
   document.getElementById('statsCloseBtn')?.addEventListener('click', () => toggleStatsPanel());
   // Flight panel close button
   document.getElementById('flightCloseBtn')?.addEventListener('click', () => toggleFlightPanel());
 
-  // Flight panel is open by default — load data immediately
-  _flightLoaded = true;
-  document.getElementById('flightBtn')?.classList.add('active');
-  fetchOpenSky()
-    .then(data => {
-      _flightData = data;
-      _startFlightTicker();
-      _renderFlightPanel(data);
-    })
-    .catch(() => {
-      const body = document.getElementById('flightBody');
-      if (body) body.innerHTML = `<div class="stats-error">${t('flightLoadError')}</div>`;
-    });
+  // Flight poll timer — only refreshes when panel is open
   _flightPollTimer = setInterval(() => {
+    const flightPanel = document.getElementById('flightPanel');
+    if (!flightPanel || flightPanel.classList.contains('closed')) return;
     fetchOpenSky().then(data => {
       _flightData = data;
       if (!_flightTimer) _startFlightTicker();
@@ -50,8 +38,7 @@ export function initStatsPanel() {
         const curSlide = document.getElementById(`hfcSlide${_flightActiveSlot}`);
         _fillFlightSlide(curSlide, _FLIGHT_ITEMS[_flightIdx]);
       }
-      const flightPanel = document.getElementById('flightPanel');
-      if (flightPanel && !flightPanel.classList.contains('closed')) _renderFlightPanel(data);
+      _renderFlightPanel(data);
     }).catch(() => {});
   }, 120000); // 2 minutes (OpenSky rate limit safe)
 
@@ -70,6 +57,11 @@ export function toggleStatsPanel() {
   panel.classList.toggle('mobile-open', opening);
   btn?.classList.toggle('active', opening);
   if (opening) {
+    if (!_statsLoaded) {
+      _statsLoaded = true;
+      loadStats();
+      _pollTimer = setInterval(loadStats, POLL_MS);
+    }
     // Panel just opened — invalidate map size after transition
     setTimeout(() => _map?.invalidateSize(), 350);
   }
