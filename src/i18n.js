@@ -150,6 +150,22 @@ const translations = {
     hoursAgo: (h) => `${h}h ago`,
     // Stats
     topStocks: 'Top 10 Stocks',
+    // Chat
+    chat: 'Chat',
+    chatPlaceholder: 'Type a message…',
+    chatSend: 'Send',
+    chatUsername: 'Choose a display name',
+    chatUsernamePlaceholder: 'Your name',
+    chatUsernameSet: 'Set',
+    chatEmpty: 'No messages yet. Start the conversation!',
+    chatReply: 'Reply',
+    chatReplyingTo: (name) => `Replying to ${name}`,
+    chatJustNow: 'just now',
+    chatMinutesAgo: (m) => `${m}m ago`,
+    chatHoursAgo: (h) => `${h}h ago`,
+    chatDaysAgo: (d) => `${d}d ago`,
+    chatMessageTooLong: 'Message is too long (max 500 chars)',
+    chatNameRequired: 'Please set a display name first',
   },
   ar: {
     appTitle: 'Middle East Live',
@@ -291,6 +307,22 @@ const translations = {
     hoursAgo: (h) => `${h}س`,
     // Stats
     topStocks: 'أفضل 10 أسهم',
+    // Chat
+    chat: 'الدردشة',
+    chatPlaceholder: 'اكتب رسالة…',
+    chatSend: 'إرسال',
+    chatUsername: 'اختر اسم العرض',
+    chatUsernamePlaceholder: 'اسمك',
+    chatUsernameSet: 'تعيين',
+    chatEmpty: 'لا توجد رسائل بعد. ابدأ المحادثة!',
+    chatReply: 'رد',
+    chatReplyingTo: (name) => `رد على ${name}`,
+    chatJustNow: 'الآن',
+    chatMinutesAgo: (m) => `${m}د`,
+    chatHoursAgo: (h) => `${h}س`,
+    chatDaysAgo: (d) => `${d}ي`,
+    chatMessageTooLong: 'الرسالة طويلة جداً (الحد الأقصى 500 حرف)',
+    chatNameRequired: 'يرجى تعيين اسم العرض أولاً',
   },
 };
 

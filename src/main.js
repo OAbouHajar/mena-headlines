@@ -6,6 +6,7 @@ import { NewsTicker } from './ticker.js';
 import { initIntelPanel, openIntelPanel, closeIntelPanel } from './intelligence.js';
 import { initStatsPanel, toggleStatsPanel, toggleFlightPanel } from './stats.js';
 import { initPresence } from './presence.js';
+import { initChat } from './chat.js';
 
 // ============ DOM References ============
 const $ = (sel) => document.querySelector(sel);
@@ -745,6 +746,7 @@ render();
 new NewsTicker();
 initIntelPanel();
 initStatsPanel();
+initChat();
 
 // On mobile: force all panels closed so only the video grid shows
 if (isMobile()) {

@@ -286,6 +286,49 @@
         </div>
     </div>
 
+    <!-- Chat Floating Button & Drawer -->
+    <button class="chat-fab" id="chatFab" title="Chat" aria-label="Open chat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="chat-fab-badge" id="chatFabBadge"></span>
+    </button>
+
+    <div class="chat-drawer" id="chatDrawer">
+        <div class="chat-drawer-header">
+            <span class="chat-drawer-title" data-i18n="chat">Chat</span>
+            <div class="chat-drawer-actions">
+                <button class="btn-icon-sm" id="chatUsernameBtn" title="Change name">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </button>
+                <button class="btn-icon-sm" id="chatCloseBtn" title="Close">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+        <!-- Username prompt (shown when no name set) -->
+        <div class="chat-username-bar" id="chatUsernameBar">
+            <input type="text" id="chatUsernameInput" maxlength="30" data-i18n-placeholder="chatUsernamePlaceholder" placeholder="Your name">
+            <button class="btn btn-primary btn-sm" id="chatUsernameSetBtn" data-i18n="chatUsernameSet">Set</button>
+        </div>
+        <!-- Messages area -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-empty" id="chatEmpty" data-i18n="chatEmpty">No messages yet. Start the conversation!</div>
+        </div>
+        <!-- Reply context -->
+        <div class="chat-reply-bar" id="chatReplyBar" style="display:none">
+            <span class="chat-reply-text" id="chatReplyText"></span>
+            <button class="btn-icon-sm chat-reply-cancel" id="chatReplyCancel">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <!-- Input area -->
+        <div class="chat-input-area">
+            <input type="text" class="chat-input" id="chatInput" maxlength="500" data-i18n-placeholder="chatPlaceholder" placeholder="Type a message…" autocomplete="off">
+            <button class="chat-send-btn" id="chatSendBtn" title="Send">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 

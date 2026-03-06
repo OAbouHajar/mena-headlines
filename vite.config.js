@@ -839,12 +839,94 @@ function tweetsPlugin() {
   };
 }
 
+// ── Chat Plugin — dev mirror of /api/chat Azure Function ──────────────────
+function chatPlugin() {
+  const MAX_MESSAGES = 200;
+  const MAX_MSG_LEN  = 500;
+  let messages = [];
+
+  return {
+    name: 'chat',
+    configureServer(server) {
+      // Parse JSON body helper
+      function parseBody(req) {
+        return new Promise((resolve) => {
+          let body = '';
+          req.on('data', (chunk) => (body += chunk));
+          req.on('end', () => {
+            try { resolve(JSON.parse(body)); } catch { resolve({}); }
+          });
+        });
+      }
+
+      server.middlewares.use('/api/chat', async (req, res) => {
+        const send = (status, obj) => {
+          res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+          res.end(JSON.stringify(obj));
+        };
+
+        if (req.method === 'GET') {
+          const url = new URL(req.url, 'http://localhost');
+          const since = parseInt(url.searchParams.get('since')) || 0;
+          const filtered = since > 0 ? messages.filter(m => m.timestamp > since) : messages;
+          send(200, { messages: filtered });
+          return;
+        }
+
+        if (req.method === 'POST') {
+          const body = await parseBody(req);
+
+          // Toggle reaction
+          if (body.messageId && body.reaction) {
+            const msg = messages.find(m => m.id === body.messageId);
+            if (!msg) { send(404, { error: 'Message not found' }); return; }
+            if (!msg.reactions) msg.reactions = {};
+            if (!msg.reactions[body.reaction]) msg.reactions[body.reaction] = [];
+            const idx = msg.reactions[body.reaction].indexOf(body.username);
+            if (idx >= 0) {
+              msg.reactions[body.reaction].splice(idx, 1);
+              if (msg.reactions[body.reaction].length === 0) delete msg.reactions[body.reaction];
+            } else {
+              msg.reactions[body.reaction].push(body.username);
+            }
+            send(200, { message: msg });
+            return;
+          }
+
+          // New message
+          const { username, message, replyTo } = body;
+          if (!username || !message) { send(400, { error: 'Missing username or message' }); return; }
+          const newMsg = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+            username: username.slice(0, 30),
+            message: message.slice(0, MAX_MSG_LEN),
+            timestamp: Date.now(),
+            reactions: {},
+          };
+          if (replyTo) {
+            const parent = messages.find(m => m.id === replyTo);
+            if (parent) {
+              newMsg.replyTo = { id: parent.id, username: parent.username, message: parent.message.slice(0, 80) };
+            }
+          }
+          messages.push(newMsg);
+          messages = messages.slice(-MAX_MESSAGES);
+          send(201, { message: newMsg });
+          return;
+        }
+
+        send(405, { error: 'Method not allowed' });
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // Load environment variables for the current mode
   const env = loadEnv(mode, process.cwd(), '');
   return {
     root: '.',
-    plugins: [presencePlugin(), resolveChannelPlugin(), intelligencePlugin(env), statsPlugin(), flightsPlugin(env), tweetsPlugin()],
+    plugins: [presencePlugin(), resolveChannelPlugin(), intelligencePlugin(env), statsPlugin(), flightsPlugin(env), tweetsPlugin(), chatPlugin()],
     build: {
       outDir: 'dist',
       emptyOutDir: true,
