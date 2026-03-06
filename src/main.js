@@ -156,6 +156,14 @@ async function resolveYouTubeChannel(input) {
   };
 }
 
+// ============ Channel Availability ============
+function isChannelOffline(ch) {
+  // Only mark as unavailable when there is no channelId — these channels cannot embed at all.
+  // We do not attempt to probe YouTube for live status because YouTube's public endpoints
+  // (oEmbed, etc.) are unreliable proxies for live status and cause false positives.
+  return !ch.channelId || !ch.channelId.startsWith('UC');
+}
+
 // ============ Render: Active Count Badge ============
 function renderActiveCount() {
   const n = store.active.length;
@@ -176,16 +184,22 @@ function renderChannelList() {
         const isActive = store.isActive(ch.id);
         const cat = getCategory(ch);
         const canDrag = !isMobile();
+        const offline = isChannelOffline(ch);
+        const cardClasses = ['channel-card', isActive ? 'active' : '', offline ? 'offline' : ''].filter(Boolean).join(' ');
+        const offlineTitle = offline ? ` title="${esc(t('channelOfflineTooltip'))}"` : '';
+        const chipHtml = offline
+          ? `<span class="ch-offline-chip">${t('offlineTag')}</span>`
+          : isActive ? `<span class="ch-live-chip">${t('liveTag')}</span>` : '';
         return `
-    <div class="channel-card ${isActive ? 'active' : ''}" data-id="${ch.id}" data-index="${index}"${canDrag ? ' draggable="true"' : ''}>
+    <div class="${cardClasses}" data-id="${ch.id}" data-index="${index}" data-offline="${offline}"${canDrag && !offline ? ' draggable="true"' : ''}${offlineTitle}>
       <div class="channel-avatar" style="background:${ch.logo ? 'transparent' : ch.color}">
         ${ch.logo ? `<img src="${ch.logo}" alt="${esc(ch.name)}" class="channel-logo">` : initials(ch.name)}
       </div>
       <div class="channel-info">
         <div class="channel-name">${esc(ch.name)}${ch.channelId ? '' : ' ⚠️'}</div>
-        <div class="channel-status-line">${cat}${isActive ? ` · ${t('liveTag')}` : ''}</div>
+        <div class="channel-status-line">${cat}${isActive && !offline ? ` · ${t('liveTag')}` : ''}</div>
       </div>
-      ${isActive ? `<span class="ch-live-chip">${t('liveTag')}</span>` : ''}
+      ${chipHtml}
       <div class="channel-actions">
         <button class="btn-icon-sm" data-action="edit" data-id="${ch.id}" title="Edit">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -413,6 +427,7 @@ function handleChannelCardClick(e) {
   }
   const card = e.target.closest('.channel-card');
   if (card) {
+    if (card.dataset.offline === 'true') return; // block offline channels
     store.toggleChannel(card.dataset.id);
     closeSidebarMobile();
   }
@@ -428,6 +443,7 @@ channelList.addEventListener('touchend', (e) => {
   const card = e.target.closest('.channel-card');
   const actionBtn = e.target.closest('[data-action]');
   if (actionBtn || !card) return; // let click handler deal with action buttons
+  if (card.dataset.offline === 'true') return; // block offline channels
   e.preventDefault(); // prevent ghost click
   store.toggleChannel(card.dataset.id);
   closeSidebarMobile();
@@ -527,6 +543,7 @@ if (isMobile()) {
 $('#statsBtn').addEventListener('click', () => toggleStatsPanel());
 $('#flightBtn').addEventListener('click', () => toggleFlightPanel());
 $('#addChannelBtn').addEventListener('click', () => openModal());
+$('#addChannelFooterBtn').addEventListener('click', () => openModal());
 $('#intelBtn').addEventListener('click', () => openIntelPanel());
 $('#theatreBtn').addEventListener('click', () => document.body.classList.toggle('theatre'));
 $('#refreshBtn').addEventListener('click', () => {
