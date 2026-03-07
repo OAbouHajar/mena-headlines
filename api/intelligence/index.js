@@ -17,44 +17,76 @@ const MODEL_NAME  = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
 const DEPLOYMENT  = MODEL_NAME;
 
 const BLOB_CONTAINER = 'intel-cache';
-const CACHE_TTL_MS   = 3 * 60 * 60 * 1000; // 3 hours
-const MAX_HISTORY    = 4;                    // keep 4 reports = 12h history
+const CACHE_TTL_MS   = 1 * 60 * 60 * 1000; // 1 hour
+const MAX_HISTORY    = 4;                    // keep 4 reports = 4h history
 
 // ─── AI Chat constants ─────────────────────────────────────────────────────────
 const CHAT_CONTAINER = 'chat-data';
 const CHAT_BLOB      = 'chat-messages.json';
-const AI_USERNAME    = 'الذكاء الاصطناعي 🤖';
 const MAX_CHAT_MSGS  = 200;
 
-const AI_CHAT_PROMPT = `أنت شخص عربي عادي بتتابع الأخبار السياسية، اسمك "الذكاء الاصطناعي". بتعلق على الأخبار بلهجة عامية شامية/خليجية مخلوطة، زي ما حدا بيحكي مع أصحابه على واتساب.
+const AI_PERSONAS = [
+  {
+    username: 'محلل AI إيراني 🤖',
+    persona: 'iranian',
+    prompt: `أنت محلل سياسي إيراني بتتابع الأخبار من وجهة نظر إيران ومحور المقاومة. بتعلق بلهجة عامية شامية/خليجية مخلوطة زي ما حدا بيحكي مع أصحابه.
 
-قواعد مهمة جداً:
-- اكتب رسالة وحدة قصيرة (جملة أو جملتين بالكثير، ماكس 200 حرف)
-- لهجة عامية 100% — لا فصحى أبداً
+قواعد مهمة:
+- رسالة وحدة قصيرة (جملة أو جملتين، ماكس 200 حرف)
+- عامية 100% — لا فصحى أبداً
 - استخدم "الأزرق" أو "الكيان" بدل إسرائيل
 - استخدم "المحتل" أو "الاحتلال" بدل الجيش الإسرائيلي
-- لا تستخدم كلمة "إسرائيل" أبداً — دائماً "الأزرق" أو "الكيان"
-- حط إيموجي واحد أو اثنين بس
-- كن صريح ومباشر — زي تعليق واحد حقيقي
-- لا تكتب تحليل أو تقرير — بس تعليق سريع
-- أحياناً حط "والله" أو "يعني" أو "هلق" عشان يكون طبيعي
+- لا تستخدم كلمة "إسرائيل" أبداً
+- إيموجي واحد أو اثنين
+- أنت مع محور المقاومة وإيران — دافع عن موقفهم
+- انتقد السياسة الأمريكية والغربية
+- كن طبيعي — "والله"، "يعني"، "هلق"
 - لا تبدأ كل رسالة بنفس الطريقة — نوّع
-- ممكن تعلق على أي خبر مهم — حرب، سياسة، اقتصاد، طيران
+- ممكن تتفاعل مع رسائل الشات إذا في شي متعلق — بس لا تذكر اسم حدا
 
-أمثلة على أسلوبك:
-- "والله ياشباب الوضع صعب وبخوف... الأزرق عم يضرب مو ضرب صحاب 💔"
-- "يعني شو هالأخبار... كل يوم أسوأ من يلي قبله 😤"
-- "هلق صار في تصعيد جديد بالمنطقة والناس خايفة 🔥"
-- "الكيان مجنون والعالم ساكت... عادي يعني 🤷‍♂️"
-- "أسعار النفط طالعة والشعب تحت الخط 📉"
+أرجع بس نص الرسالة — بدون JSON، بدون علامات تنصيص.`
+  },
+  {
+    username: 'محلل AI أميركي 🤖',
+    persona: 'western',
+    prompt: `أنت محلل سياسي أميركي/غربي بتتابع الأخبار من وجهة نظر أمريكا والغرب. بتعلق بلهجة عامية شامية/خليجية مخلوطة زي ما حدا بيحكي مع أصحابه.
 
-كمان:
-- رح يوصلك آخر رسائل الشات من الناس. إذا حدا حكى شي متعلق بالأخبار أو الوضع، ممكن ترد عليه أو تعلق على كلامه بشكل طبيعي
-- بس خلي تركيزك الأساسي على الأخبار الجديدة — الشات بس عشان تكون جزء من الحوار مش تكرر كلام الناس
-- إذا ما في شي مهم بالشات، عادي علّق على الأخبار مباشرة
-- لا تقول "زي ما حكى فلان" أو تذكر اسم حدا — بس تفاعل طبيعي
+قواعد مهمة:
+- رسالة وحدة قصيرة (جملة أو جملتين، ماكس 200 حرف)
+- عامية 100% — لا فصحى أبداً
+- استخدم "الأزرق" أو "الكيان" بدل إسرائيل
+- لا تستخدم كلمة "إسرائيل" أبداً
+- إيموجي واحد أو اثنين
+- أنت مع الموقف الأميركي/الغربي — دافع عن سياساتهم
+- انتقد إيران والميليشيات
+- كن طبيعي — "والله"، "يعني"، "هلق"
+- لا تبدأ كل رسالة بنفس الطريقة — نوّع
+- ممكن تتفاعل مع رسائل الشات إذا في شي متعلق — بس لا تذكر اسم حدا
 
-أرجع بس نص الرسالة — بدون JSON، بدون علامات تنصيص، بدون شرح. فقط الرسالة.`;
+أرجع بس نص الرسالة — بدون JSON، بدون علامات تنصيص.`
+  },
+  {
+    username: 'محلل AI حيادي 🤖',
+    persona: 'neutral',
+    prompt: `أنت محلل سياسي حيادي ومحايد بتتابع الأخبار بدون انحياز لأي طرف. بتعلق بلهجة عامية شامية/خليجية مخلوطة زي ما حدا بيحكي مع أصحابه.
+
+قواعد مهمة:
+- رسالة وحدة قصيرة (جملة أو جملتين، ماكس 200 حرف)
+- عامية 100% — لا فصحى أبداً
+- استخدم "الأزرق" أو "الكيان" بدل إسرائيل
+- لا تستخدم كلمة "إسرائيل" أبداً
+- إيموجي واحد أو اثنين
+- كن حيادي 100% — لا تنحاز لأي طرف
+- حلل الوضع بصراحة — انتقد الكل إذا لازم
+- كن طبيعي — "والله"، "يعني"، "هلق"
+- لا تبدأ كل رسالة بنفس الطريقة — نوّع
+- ممكن تتفاعل مع رسائل الشات إذا في شي متعلق — بس لا تذكر اسم حدا
+
+أرجع بس نص الرسالة — بدون JSON، بدون علامات تنصيص.`
+  },
+];
+
+const AI_USERNAMES = AI_PERSONAS.map(p => p.username);
 
 if (!API_KEY || !ENDPOINT) {
   module.exports = async function (context) {
@@ -285,10 +317,10 @@ async function postAiChatMessage(headlines) {
     if (!chatContainer) return;
     await chatContainer.createIfNotExists();
 
-    // Check if last AI message was recent (avoid duplicates)
+    // Check if any AI persona posted recently (1 hour cooldown)
     const msgs = await readChatMessages(chatContainer);
-    const lastAi = [...msgs].reverse().find(m => m.username === AI_USERNAME);
-    if (lastAi && (Date.now() - lastAi.timestamp) < 2.5 * 60 * 60 * 1000) return;
+    const lastAi = [...msgs].reverse().find(m => AI_USERNAMES.includes(m.username));
+    if (lastAi && (Date.now() - lastAi.timestamp) < 1 * 60 * 60 * 1000) return;
 
     const client = new AzureOpenAI({
       apiKey: API_KEY, apiVersion: API_VERSION,
@@ -302,40 +334,49 @@ async function postAiChatMessage(headlines) {
       .map(m => `${m.username}: ${m.message}`)
       .join('\n');
 
-    const userPrompt = recentChat
-      ? `آخر رسائل الشات:\n${recentChat}\n\nهاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق على الأخبار، وإذا في حدا بالشات حكى شي متعلق ممكن تتفاعل معه:`
-      : `هاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق عليها:`;
+    // Generate a message for each persona
+    for (const persona of AI_PERSONAS) {
+      try {
+        const userPrompt = recentChat
+          ? `آخر رسائل الشات:\n${recentChat}\n\nهاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق على الأخبار من وجهة نظرك:`
+          : `هاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق عليها من وجهة نظرك:`;
 
-    const response = await client.chat.completions.create({
-      model: MODEL_NAME,
-      messages: [
-        { role: 'system', content: AI_CHAT_PROMPT },
-        { role: 'user',   content: userPrompt },
-      ],
-      max_completion_tokens: 150,
-    });
+        const response = await client.chat.completions.create({
+          model: MODEL_NAME,
+          messages: [
+            { role: 'system', content: persona.prompt },
+            { role: 'user',   content: userPrompt },
+          ],
+          max_completion_tokens: 150,
+        });
 
-    let aiText = (response.choices?.[0]?.message?.content || '').trim();
-    if ((aiText.startsWith('"') && aiText.endsWith('"')) || (aiText.startsWith("'") && aiText.endsWith("'")))
-      aiText = aiText.slice(1, -1);
-    if (!aiText || aiText.length < 5) return;
+        let aiText = (response.choices?.[0]?.message?.content || '').trim();
+        if ((aiText.startsWith('"') && aiText.endsWith('"')) || (aiText.startsWith("'") && aiText.endsWith("'")))
+          aiText = aiText.slice(1, -1);
+        if (!aiText || aiText.length < 5) continue;
 
-    // Safety: force replace
-    aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
+        // Safety: force replace
+        aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
 
-    const newMsg = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-      username: AI_USERNAME,
-      message: aiText.slice(0, 500),
-      timestamp: Date.now(),
-      reactions: {},
-      isAI: true,
-    };
-    msgs.push(newMsg);
+        const newMsg = {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+          username: persona.username,
+          message: aiText.slice(0, 500),
+          timestamp: Date.now(),
+          reactions: {},
+          isAI: true,
+          persona: persona.persona,
+        };
+        msgs.push(newMsg);
+        console.log(`[intelligence] AI chat (${persona.persona}): "${aiText.slice(0, 50)}..."`);
+      } catch (e) {
+        console.warn(`[intelligence] AI chat (${persona.persona}) failed:`, e.message);
+      }
+    }
+
     await writeChatMessages(chatContainer, msgs.slice(-MAX_CHAT_MSGS));
-    console.log(`[intelligence] AI chat message posted: "${aiText.slice(0, 60)}..."`);
   } catch (e) {
-    console.warn('[intelligence] AI chat message failed:', e.message);
+    console.warn('[intelligence] AI chat messages failed:', e.message);
   }
 }
 

@@ -9,7 +9,12 @@ import { t, onLangChange } from './i18n.js';
 // ─── Constants ───────────────────────────────────────────────────────────────
 const POLL_INTERVAL    = 5_000;       // 5 seconds
 
-const AI_USERNAME      = 'الذكاء الاصطناعي 🤖';
+const AI_USERNAMES    = ['محلل AI إيراني 🤖', 'محلل AI أميركي 🤖', 'محلل AI حيادي 🤖'];
+const AI_PERSONA_MAP  = {
+  'محلل AI إيراني 🤖':  { color: '#e74c3c', cssClass: 'chat-msg-ai-iranian' },
+  'محلل AI أميركي 🤖':  { color: '#3498db', cssClass: 'chat-msg-ai-western' },
+  'محلل AI حيادي 🤖':   { color: '#9b59b6', cssClass: 'chat-msg-ai-neutral' },
+};
 const STORAGE_KEY      = 'ytmv_chat_username';
 const REACTIONS        = ['👍', '❤️', '😂', '😮', '👎'];
 
@@ -101,9 +106,10 @@ function renderMessages() {
 
   // Build message HTML
   const html = messages.map(msg => {
-    const isAI = msg.isAI || msg.username === AI_USERNAME;
-    const nameColor = isAI ? '#4e9af5' : colorForName(msg.username);
-    const aiClass = isAI ? ' chat-msg-ai' : '';
+    const isAI = msg.isAI || AI_USERNAMES.includes(msg.username);
+    const aiInfo = isAI ? (AI_PERSONA_MAP[msg.username] || { color: '#4e9af5', cssClass: 'chat-msg-ai' }) : null;
+    const nameColor = isAI ? aiInfo.color : colorForName(msg.username);
+    const aiClass = isAI ? ` ${aiInfo.cssClass}` : '';
     let replyHtml = '';
     if (msg.replyTo) {
       replyHtml = `<div class="chat-msg-reply-quote"><strong>${esc(msg.replyTo.username)}</strong>: ${esc(msg.replyTo.message)}</div>`;

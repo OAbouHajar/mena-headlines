@@ -196,20 +196,33 @@ confidence_level must be one of: Low, Moderate, High`;
   }
 
   // ─── Server-side cache: keyed by lang ────────────────────────────────────────
-  const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
   const serverCache  = new Map();       // lang → { data, timestamp }
 
-  const AI_CHAT_PROMPT = `أنت شخص عربي عادي بتتابع الأخبار السياسية، اسمك "الذكاء الاصطناعي". بتعلق على الأخبار بلهجة عامية شامية/خليجية مخلوطة، زي ما حدا بيحكي مع أصحابه على واتساب.
-قواعد: رسالة وحدة قصيرة (ماكس 200 حرف)، عامية 100%، استخدم "الأزرق" أو "الكيان" بدل إسرائيل، إيموجي واحد أو اثنين، تعليق سريع مش تقرير.
-إذا في رسائل بالشات متعلقة بالأخبار، ممكن تتفاعل معها بشكل طبيعي — بس خلي الأخبار هي الأساس. لا تذكر اسم حدا.
-أرجع بس نص الرسالة — بدون JSON، بدون علامات تنصيص.`;
-  const AI_USERNAME = 'الذكاء الاصطناعي 🤖';
+  const AI_PERSONAS = [
+    {
+      username: 'محلل AI إيراني 🤖',
+      persona: 'iranian',
+      prompt: `أنت محلل سياسي إيراني بتتابع الأخبار من وجهة نظر إيران ومحور المقاومة. عامية 100%، ماكس 200 حرف، استخدم "الأزرق" أو "الكيان" بدل إسرائيل، إيموجي واحد أو اثنين. دافع عن محور المقاومة وإيران، انتقد أمريكا. إذا في رسائل بالشات متعلقة ممكن تتفاعل — بس لا تذكر اسم حدا. أرجع بس نص الرسالة.`
+    },
+    {
+      username: 'محلل AI أميركي 🤖',
+      persona: 'western',
+      prompt: `أنت محلل سياسي أميركي/غربي بتتابع الأخبار من وجهة نظر أمريكا والغرب. عامية 100%، ماكس 200 حرف، استخدم "الأزرق" أو "الكيان" بدل إسرائيل، إيموجي واحد أو اثنين. دافع عن الموقف الأميركي، انتقد إيران. إذا في رسائل بالشات متعلقة ممكن تتفاعل — بس لا تذكر اسم حدا. أرجع بس نص الرسالة.`
+    },
+    {
+      username: 'محلل AI حيادي 🤖',
+      persona: 'neutral',
+      prompt: `أنت محلل سياسي حيادي بتحلل الأخبار بدون انحياز لأي طرف. عامية 100%، ماكس 200 حرف، استخدم "الأزرق" أو "الكيان" بدل إسرائيل، إيموجي واحد أو اثنين. حيادي 100%، انتقد الكل إذا لازم. إذا في رسائل بالشات متعلقة ممكن تتفاعل — بس لا تذكر اسم حدا. أرجع بس نص الرسالة.`
+    },
+  ];
+  const AI_USERNAMES = AI_PERSONAS.map(p => p.username);
   let lastAiChatTime = 0;
 
   async function postAiChatDev(headlines, serverPort) {
     try {
-      // Rate limit: once per analysis cycle
-      if (lastAiChatTime && (Date.now() - lastAiChatTime) < 30 * 60 * 1000) return;
+      // Rate limit: 15 min in dev
+      if (lastAiChatTime && (Date.now() - lastAiChatTime) < 15 * 60 * 1000) return;
 
       // Fetch recent chat messages for context
       let recentChat = '';
@@ -223,47 +236,53 @@ confidence_level must be one of: Low, Moderate, High`;
             recentChat = nonAi.map(m => `${m.username}: ${m.message}`).join('\n');
           }
         }
-      } catch (_) { /* ignore, proceed without chat context */ }
+      } catch (_) { /* ignore */ }
 
-      const userPrompt = recentChat
-        ? `آخر رسائل الشات:\n${recentChat}\n\nهاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق على الأخبار، وإذا في حدا بالشات حكى شي متعلق ممكن تتفاعل معه:`
-        : `هاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق عليها:`;
-
-      let aiText;
-      if (API_KEY && ENDPOINT) {
-        const { AzureOpenAI } = await import('openai');
-        const client = new AzureOpenAI({ apiKey: API_KEY, apiVersion: API_VERSION, endpoint: ENDPOINT, deployment: DEPLOYMENT });
-        const resp = await client.chat.completions.create({
-          model: MODEL_NAME,
-          messages: [
-            { role: 'system', content: AI_CHAT_PROMPT },
-            { role: 'user',   content: userPrompt },
-          ],
-          max_completion_tokens: 100,
-        });
-        aiText = (resp.choices?.[0]?.message?.content || '').trim();
-        aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
-        if (aiText.startsWith('"') && aiText.endsWith('"')) aiText = aiText.slice(1, -1);
-      }
-      if (!aiText || aiText.length < 5) {
-        const samples = [
-          'والله ياشباب الوضع صعب وبخوف... الأزرق عم يضرب مو ضرب صحاب 💔',
-          'يعني شو هالأخبار... كل يوم أسوأ من يلي قبله 😤',
-          'هلق صار في تصعيد جديد بالمنطقة والناس خايفة 🔥',
-          'الكيان مجنون والعالم ساكت... عادي يعني 🤷‍♂️',
-        ];
-        aiText = samples[Math.floor(Math.random() * samples.length)];
-      }
-
-      // Post to the local chat middleware
       const port = serverPort || 3000;
-      await fetch(`http://localhost:${port}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: AI_USERNAME, message: aiText }),
-      });
+
+      for (const persona of AI_PERSONAS) {
+        try {
+          const userPrompt = recentChat
+            ? `آخر رسائل الشات:\n${recentChat}\n\nهاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق على الأخبار من وجهة نظرك:`
+            : `هاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق عليها من وجهة نظرك:`;
+
+          let aiText;
+          if (API_KEY && ENDPOINT) {
+            const { AzureOpenAI } = await import('openai');
+            const client = new AzureOpenAI({ apiKey: API_KEY, apiVersion: API_VERSION, endpoint: ENDPOINT, deployment: DEPLOYMENT });
+            const resp = await client.chat.completions.create({
+              model: MODEL_NAME,
+              messages: [
+                { role: 'system', content: persona.prompt },
+                { role: 'user',   content: userPrompt },
+              ],
+              max_completion_tokens: 100,
+            });
+            aiText = (resp.choices?.[0]?.message?.content || '').trim();
+            aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
+            if (aiText.startsWith('"') && aiText.endsWith('"')) aiText = aiText.slice(1, -1);
+          }
+          if (!aiText || aiText.length < 5) {
+            const samples = {
+              iranian:  'والله محور المقاومة ما رح يسكت... الأزرق لازم يفهم إنو في خط أحمر 🔥',
+              western:  'يعني إيران عم تلعب بالنار والمنطقة كلها بتدفع الثمن 🤷‍♂️',
+              neutral:  'الوضع صعب على الكل... لا هاد صح ولا هاد — الناس يللي بتدفع الثمن 💔',
+            };
+            aiText = samples[persona.persona];
+          }
+
+          await fetch(`http://localhost:${port}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: persona.username, message: aiText }),
+          });
+          console.log(`[intelligence] AI chat (${persona.persona}): "${aiText.slice(0, 50)}..."`);
+        } catch (e) {
+          console.warn(`[intelligence] AI chat (${persona.persona}) dev failed:`, e.message);
+        }
+      }
+
       lastAiChatTime = Date.now();
-      console.log(`[intelligence] AI chat posted: "${aiText.slice(0, 50)}..."`);
     } catch (e) {
       console.warn('[intelligence] AI chat dev failed:', e.message);
     }
