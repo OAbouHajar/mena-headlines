@@ -320,10 +320,16 @@ async function postAiChatMessage(headlines) {
     if (!chatContainer) return;
     await chatContainer.createIfNotExists();
 
-    // Check if any AI persona posted recently (1 hour cooldown)
+    // Only post once per 2-hour slot (e.g. 0:00, 2:00, 4:00, ..., 22:00)
     const msgs = await readChatMessages(chatContainer);
     const lastAi = [...msgs].reverse().find(m => AI_USERNAMES.includes(m.username));
-    if (lastAi && (Date.now() - lastAi.timestamp) < 1 * 60 * 60 * 1000) return;
+    if (lastAi) {
+      const lastH = new Date(lastAi.timestamp).getHours();
+      const lastSlot = lastH - (lastH % 2);
+      const curH = new Date().getHours();
+      const curSlot = curH - (curH % 2);
+      if (lastSlot === curSlot) return;
+    }
 
     const client = new AzureOpenAI({
       apiKey: API_KEY, apiVersion: API_VERSION,

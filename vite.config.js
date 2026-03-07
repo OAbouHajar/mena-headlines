@@ -217,15 +217,19 @@ confidence_level must be one of: Low, Moderate, High`;
     },
   ];
   const AI_USERNAMES = AI_PERSONAS.map(p => p.username);
-  let lastAiChatTime = 0;
+  let lastAiChatSlot = -1; // tracks which 2-hour slot we last posted (0,2,4,...22)
   let aiChatInProgress = false;
+  let isFirstRun = true;   // inject AI messages on first startup
 
   async function postAiChatDev(headlines, serverPort) {
     try {
       // Prevent concurrent calls (multiple runAnalysis('ar') fire in parallel)
       if (aiChatInProgress) return;
-      // Rate limit: 15 min in dev
-      if (lastAiChatTime && (Date.now() - lastAiChatTime) < 15 * 60 * 1000) return;
+      const currentHour = new Date().getHours();
+      const currentSlot = currentHour - (currentHour % 2); // 0,2,4,...22
+      // On first run: always post (inject starting messages)
+      // After that: only post at even-hour boundaries (every 2 hours)
+      if (!isFirstRun && currentSlot === lastAiChatSlot) return;
       aiChatInProgress = true;
 
       // Fetch recent chat messages for context
@@ -292,7 +296,14 @@ confidence_level must be one of: Low, Moderate, High`;
         }
       }
 
-      lastAiChatTime = Date.now();
+      const h = new Date().getHours();
+      lastAiChatSlot = h - (h % 2);
+      if (isFirstRun) {
+        console.log(`[intelligence] AI chat injected as starting point`);
+        isFirstRun = false;
+      } else {
+        console.log(`[intelligence] AI chat posted for ${lastAiChatSlot}:00 slot`);
+      }
     } catch (e) {
       console.warn('[intelligence] AI chat dev failed:', e.message);
     } finally {
@@ -369,8 +380,17 @@ confidence_level must be one of: Low, Moderate, High`;
       };
       prewarm(); // start immediately
 
-      // Background refresh every 30 minutes — independent of any client request
-      setInterval(prewarm, CACHE_TTL_MS);
+      // Schedule next run at the top of the next even hour, then every 2 hours
+      const now = new Date();
+      const currentH = now.getHours();
+      const nextEvenH = currentH + (2 - (currentH % 2)); // next even hour
+      const msUntilNextSlot = ((nextEvenH - currentH) * 60 - now.getMinutes()) * 60 * 1000
+                              - now.getSeconds() * 1000 - now.getMilliseconds();
+      setTimeout(() => {
+        prewarm();
+        setInterval(prewarm, 2 * 60 * 60 * 1000); // then every 2 hours
+      }, msUntilNextSlot);
+      console.log(`[intelligence] Next AI chat at ${nextEvenH}:00 (in ${Math.round(msUntilNextSlot / 60000)} min)`);
 
       server.middlewares.use('/api/intelligence', (req, res) => {
         if (req.method !== 'POST') {
