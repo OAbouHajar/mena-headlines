@@ -3829,6 +3829,54 @@ a.news-source-label:hover { filter: brightness(1.2); }
         opacity: 0;
         pointer-events: none;
     }
+    /* Prominent header with close button on mobile */
+    .chat-standalone .stats-panel-header {
+        padding: 14px 16px;
+        background: var(--bg-surface);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .chat-standalone .stats-panel-header h3 {
+        font-size: 15px;
+    }
+    /* Large close X button on mobile */
+    .chat-standalone .stats-close-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 1;
+    }
+    .chat-standalone .stats-close-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+    .chat-standalone .stats-close-btn:active {
+        background: rgba(255,255,255,0.15);
+        transform: scale(0.9);
+    }
+    /* Larger tap targets for messages */
+    .chat-msg {
+        padding: 8px 12px;
+    }
+    .chat-msg-text {
+        font-size: 13.5px;
+        line-height: 1.5;
+    }
+    /* Bigger input area on mobile */
+    .chat-input-area {
+        padding: 10px 12px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+    .chat-input {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
 }
 
 

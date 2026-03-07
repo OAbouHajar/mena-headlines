@@ -207,7 +207,10 @@ function openChat() {
   fab.classList.add('hidden');
   unreadCount = 0;
   updateBadge();
-  chatInput.focus();
+  // On mobile, don't focus input — let user read messages first.
+  // Keyboard only opens when they tap the input field.
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  if (!isMobile) chatInput.focus();
   scrollToBottom();
 }
 
