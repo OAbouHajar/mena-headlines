@@ -3554,6 +3554,24 @@ a.news-source-label:hover { filter: brightness(1.2); }
 .chat-msg:hover {
     background: var(--bg-surface-hover);
 }
+
+/* AI message styling */
+.chat-msg-ai {
+    background: rgba(78, 154, 245, 0.06);
+    border-left: 2px solid rgba(78, 154, 245, 0.4);
+    border-radius: var(--radius-sm);
+}
+[dir="rtl"] .chat-msg-ai {
+    border-left: none;
+    border-right: 2px solid rgba(78, 154, 245, 0.4);
+}
+.chat-msg-ai:hover {
+    background: rgba(78, 154, 245, 0.10);
+}
+.chat-msg-ai .chat-msg-username {
+    font-weight: 800;
+}
+
 .chat-msg-header {
     display: flex;
     align-items: baseline;

@@ -7,9 +7,11 @@
 import { t, onLangChange } from './i18n.js';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const POLL_INTERVAL = 5_000;       // 5 seconds
-const STORAGE_KEY   = 'ytmv_chat_username';
-const REACTIONS     = ['👍', '❤️', '😂', '😮', '👎'];
+const POLL_INTERVAL    = 5_000;       // 5 seconds
+
+const AI_USERNAME      = 'الذكاء الاصطناعي 🤖';
+const STORAGE_KEY      = 'ytmv_chat_username';
+const REACTIONS        = ['👍', '❤️', '😂', '😮', '👎'];
 
 // ─── DOM refs ────────────────────────────────────────────────────────────────
 let fab, badge, panel, closeBtn, usernameBtn;
@@ -99,7 +101,9 @@ function renderMessages() {
 
   // Build message HTML
   const html = messages.map(msg => {
-    const nameColor = colorForName(msg.username);
+    const isAI = msg.isAI || msg.username === AI_USERNAME;
+    const nameColor = isAI ? '#4e9af5' : colorForName(msg.username);
+    const aiClass = isAI ? ' chat-msg-ai' : '';
     let replyHtml = '';
     if (msg.replyTo) {
       replyHtml = `<div class="chat-msg-reply-quote"><strong>${esc(msg.replyTo.username)}</strong>: ${esc(msg.replyTo.message)}</div>`;
@@ -121,7 +125,7 @@ function renderMessages() {
       `<button class="chat-msg-action-btn" data-action="react" data-msg-id="${msg.id}" data-emoji="${e}" title="${e}">${e}</button>`
     ).join('');
 
-    return `<div class="chat-msg" data-id="${msg.id}">
+    return `<div class="chat-msg${aiClass}" data-id="${msg.id}">
       ${replyHtml}
       <div class="chat-msg-header">
         <span class="chat-msg-username" style="color:${nameColor}">${esc(msg.username)}</span>
@@ -396,6 +400,9 @@ export function initChat() {
   // Initial load + start polling
   fullRefresh();
   pollTimer = setInterval(poll, POLL_INTERVAL);
+
+  // AI chat messages are posted by the intelligence API — no separate trigger needed.
+  // The normal 5s poll will pick them up automatically.
 
   // Pause polling when tab hidden, resume when visible
   document.addEventListener('visibilitychange', () => {

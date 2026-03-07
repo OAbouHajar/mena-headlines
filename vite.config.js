@@ -199,6 +199,58 @@ confidence_level must be one of: Low, Moderate, High`;
   const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
   const serverCache  = new Map();       // lang → { data, timestamp }
 
+  const AI_CHAT_PROMPT = `أنت شخص عربي عادي بتتابع الأخبار السياسية، اسمك "الذكاء الاصطناعي". بتعلق على الأخبار بلهجة عامية شامية/خليجية مخلوطة، زي ما حدا بيحكي مع أصحابه على واتساب.
+قواعد: رسالة وحدة قصيرة (ماكس 200 حرف)، عامية 100%، استخدم "الأزرق" أو "الكيان" بدل إسرائيل، إيموجي واحد أو اثنين، تعليق سريع مش تقرير.
+أرجع بس نص الرسالة — بدون JSON، بدون علامات تنصيص.`;
+  const AI_USERNAME = 'الذكاء الاصطناعي 🤖';
+  let lastAiChatTime = 0;
+
+  async function postAiChatDev(headlines, serverPort) {
+    try {
+      // Rate limit: once per analysis cycle
+      if (lastAiChatTime && (Date.now() - lastAiChatTime) < 30 * 60 * 1000) return;
+
+      let aiText;
+      if (API_KEY && ENDPOINT) {
+        const { AzureOpenAI } = await import('openai');
+        const client = new AzureOpenAI({ apiKey: API_KEY, apiVersion: API_VERSION, endpoint: ENDPOINT, deployment: DEPLOYMENT });
+        const resp = await client.chat.completions.create({
+          model: MODEL_NAME,
+          messages: [
+            { role: 'system', content: AI_CHAT_PROMPT },
+            { role: 'user',   content: `هاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق عليها:` },
+          ],
+          max_tokens: 100,
+          temperature: 0.9,
+        });
+        aiText = (resp.choices?.[0]?.message?.content || '').trim();
+        aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
+        if (aiText.startsWith('"') && aiText.endsWith('"')) aiText = aiText.slice(1, -1);
+      }
+      if (!aiText || aiText.length < 5) {
+        const samples = [
+          'والله ياشباب الوضع صعب وبخوف... الأزرق عم يضرب مو ضرب صحاب 💔',
+          'يعني شو هالأخبار... كل يوم أسوأ من يلي قبله 😤',
+          'هلق صار في تصعيد جديد بالمنطقة والناس خايفة 🔥',
+          'الكيان مجنون والعالم ساكت... عادي يعني 🤷‍♂️',
+        ];
+        aiText = samples[Math.floor(Math.random() * samples.length)];
+      }
+
+      // Post to the local chat middleware
+      const port = serverPort || 3000;
+      await fetch(`http://localhost:${port}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: AI_USERNAME, message: aiText }),
+      });
+      lastAiChatTime = Date.now();
+      console.log(`[intelligence] AI chat posted: "${aiText.slice(0, 50)}..."`);
+    } catch (e) {
+      console.warn('[intelligence] AI chat dev failed:', e.message);
+    }
+  }
+
   async function runAnalysis(requestLang) {
     const feeds = requestLang === 'ar' ? RSS_FEEDS_AR : RSS_FEEDS_EN;
     console.log(`[intelligence] Running analysis for lang=${requestLang}...`);
@@ -241,12 +293,25 @@ confidence_level must be one of: Low, Moderate, High`;
 
     serverCache.set(requestLang, { data: result, timestamp: Date.now() });
     console.log(`[intelligence] Cache updated for lang=${requestLang}`);
+
+    // Post AI chat message when Arabic analysis completes
+    if (requestLang === 'ar') {
+      postAiChatDev(headlines, _serverPort).catch(() => {});
+    }
+
     return result;
   }
+
+  let _serverPort = 3000;
 
   return {
     name: 'intelligence',
     configureServer(server) {
+      // Capture actual port once server is ready
+      server.httpServer?.once('listening', () => {
+        const addr = server.httpServer.address();
+        if (addr && typeof addr === 'object') _serverPort = addr.port;
+      });
       // Pre-warm both langs immediately when server is ready
       const prewarm = () => {
         for (const l of ['en', 'ar']) {

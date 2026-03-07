@@ -20,6 +20,36 @@ const BLOB_CONTAINER = 'intel-cache';
 const CACHE_TTL_MS   = 3 * 60 * 60 * 1000; // 3 hours
 const MAX_HISTORY    = 4;                    // keep 4 reports = 12h history
 
+// ─── AI Chat constants ─────────────────────────────────────────────────────────
+const CHAT_CONTAINER = 'chat-data';
+const CHAT_BLOB      = 'chat-messages.json';
+const AI_USERNAME    = 'الذكاء الاصطناعي 🤖';
+const MAX_CHAT_MSGS  = 200;
+
+const AI_CHAT_PROMPT = `أنت شخص عربي عادي بتتابع الأخبار السياسية، اسمك "الذكاء الاصطناعي". بتعلق على الأخبار بلهجة عامية شامية/خليجية مخلوطة، زي ما حدا بيحكي مع أصحابه على واتساب.
+
+قواعد مهمة جداً:
+- اكتب رسالة وحدة قصيرة (جملة أو جملتين بالكثير، ماكس 200 حرف)
+- لهجة عامية 100% — لا فصحى أبداً
+- استخدم "الأزرق" أو "الكيان" بدل إسرائيل
+- استخدم "المحتل" أو "الاحتلال" بدل الجيش الإسرائيلي
+- لا تستخدم كلمة "إسرائيل" أبداً — دائماً "الأزرق" أو "الكيان"
+- حط إيموجي واحد أو اثنين بس
+- كن صريح ومباشر — زي تعليق واحد حقيقي
+- لا تكتب تحليل أو تقرير — بس تعليق سريع
+- أحياناً حط "والله" أو "يعني" أو "هلق" عشان يكون طبيعي
+- لا تبدأ كل رسالة بنفس الطريقة — نوّع
+- ممكن تعلق على أي خبر مهم — حرب، سياسة، اقتصاد، طيران
+
+أمثلة على أسلوبك:
+- "والله ياشباب الوضع صعب وبخوف... الأزرق عم يضرب مو ضرب صحاب 💔"
+- "يعني شو هالأخبار... كل يوم أسوأ من يلي قبله 😤"
+- "هلق صار في تصعيد جديد بالمنطقة والناس خايفة 🔥"
+- "الكيان مجنون والعالم ساكت... عادي يعني 🤷‍♂️"
+- "أسعار النفط طالعة والشعب تحت الخط 📉"
+
+أرجع بس نص الرسالة — بدون JSON، بدون علامات تنصيص، بدون شرح. فقط الرسالة.`;
+
 if (!API_KEY || !ENDPOINT) {
   module.exports = async function (context) {
     context.res = { status: 503, body: { error: 'Azure OpenAI not configured' } };
@@ -213,6 +243,86 @@ async function saveIndex(container, lang, index) {
   await writeBlob(container, `intel-${lang}-index.json`, index);
 }
 
+// ─── AI Chat helpers ───────────────────────────────────────────────────────────
+
+function getChatContainer() {
+  const connStr = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  if (!connStr) return null;
+  return BlobServiceClient.fromConnectionString(connStr).getContainerClient(CHAT_CONTAINER);
+}
+
+async function readChatMessages(container) {
+  try {
+    const client = container.getBlockBlobClient(CHAT_BLOB);
+    const download = await client.download();
+    const chunks = [];
+    for await (const chunk of download.readableStreamBody) chunks.push(chunk);
+    return JSON.parse(Buffer.concat(chunks).toString());
+  } catch (e) {
+    if (e.statusCode === 404) return [];
+    throw e;
+  }
+}
+
+async function writeChatMessages(container, messages) {
+  const client = container.getBlockBlobClient(CHAT_BLOB);
+  const json = JSON.stringify(messages);
+  await client.upload(json, Buffer.byteLength(json), {
+    blobHTTPHeaders: { blobContentType: 'application/json' },
+    overwrite: true,
+  });
+}
+
+async function postAiChatMessage(headlines) {
+  try {
+    const chatContainer = getChatContainer();
+    if (!chatContainer) return;
+    await chatContainer.createIfNotExists();
+
+    // Check if last AI message was recent (avoid duplicates)
+    const msgs = await readChatMessages(chatContainer);
+    const lastAi = [...msgs].reverse().find(m => m.username === AI_USERNAME);
+    if (lastAi && (Date.now() - lastAi.timestamp) < 2.5 * 60 * 60 * 1000) return;
+
+    const client = new AzureOpenAI({
+      apiKey: API_KEY, apiVersion: API_VERSION,
+      endpoint: ENDPOINT, deployment: DEPLOYMENT,
+    });
+
+    const response = await client.chat.completions.create({
+      model: MODEL_NAME,
+      messages: [
+        { role: 'system', content: AI_CHAT_PROMPT },
+        { role: 'user',   content: `هاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق عليها:` },
+      ],
+      max_tokens: 150,
+      temperature: 0.9,
+    });
+
+    let aiText = (response.choices?.[0]?.message?.content || '').trim();
+    if ((aiText.startsWith('"') && aiText.endsWith('"')) || (aiText.startsWith("'") && aiText.endsWith("'")))
+      aiText = aiText.slice(1, -1);
+    if (!aiText || aiText.length < 5) return;
+
+    // Safety: force replace
+    aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
+
+    const newMsg = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      username: AI_USERNAME,
+      message: aiText.slice(0, 500),
+      timestamp: Date.now(),
+      reactions: {},
+      isAI: true,
+    };
+    msgs.push(newMsg);
+    await writeChatMessages(chatContainer, msgs.slice(-MAX_CHAT_MSGS));
+    console.log(`[intelligence] AI chat message posted: "${aiText.slice(0, 60)}..."`);
+  } catch (e) {
+    console.warn('[intelligence] AI chat message failed:', e.message);
+  }
+}
+
 // ─── RSS helpers ───────────────────────────────────────────────────────────────
 
 function extractTitles(xml) {
@@ -351,6 +461,11 @@ module.exports = async function (context, req) {
       result._historyIndex = 0;
       result._historyTotal = index.length;
       console.log(`[intelligence] New report saved. History length: ${index.length} for lang=${requestLang}`);
+
+      // Post AI chat message alongside Arabic report generation
+      if (requestLang === 'ar') {
+        postAiChatMessage(headlines).catch(() => {});
+      }
     }
 
     context.res = { status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(result) };
