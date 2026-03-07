@@ -295,8 +295,7 @@ async function postAiChatMessage(headlines) {
         { role: 'system', content: AI_CHAT_PROMPT },
         { role: 'user',   content: `هاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق عليها:` },
       ],
-      max_tokens: 150,
-      temperature: 0.9,
+      max_completion_tokens: 150,
     });
 
     let aiText = (response.choices?.[0]?.message?.content || '').trim();

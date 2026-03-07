@@ -220,8 +220,7 @@ confidence_level must be one of: Low, Moderate, High`;
             { role: 'system', content: AI_CHAT_PROMPT },
             { role: 'user',   content: `هاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق عليها:` },
           ],
-          max_tokens: 100,
-          temperature: 0.9,
+          max_completion_tokens: 100,
         });
         aiText = (resp.choices?.[0]?.message?.content || '').trim();
         aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
