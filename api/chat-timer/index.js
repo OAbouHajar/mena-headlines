@@ -1,5 +1,5 @@
 /**
- * Timer-triggered Azure Function — runs every 30 minutes.
+ * HTTP-triggered Azure Function — called every 30 minutes by GitHub Actions cron.
  * Posts 1 rotating AI persona message to the chat, with replies/debates/reactions.
  * Independent of user visits — keeps the chat alive 24/7.
  */
@@ -147,16 +147,18 @@ async function writeMessages(container, messages) {
   });
 }
 
-// ─── Main timer handler ────────────────────────────────────────────────────────
-module.exports = async function (context, timer) {
+// ─── Main HTTP handler ─────────────────────────────────────────────────────────
+module.exports = async function (context, req) {
   if (!API_KEY || !ENDPOINT) {
     context.log.warn('[chat-timer] Azure OpenAI not configured');
+    context.res = { status: 500, body: { error: 'Azure OpenAI not configured' } };
     return;
   }
 
   const container = getChatContainer();
   if (!container) {
     context.log.warn('[chat-timer] Storage not configured');
+    context.res = { status: 500, body: { error: 'Storage not configured' } };
     return;
   }
   await container.createIfNotExists();
@@ -171,6 +173,7 @@ module.exports = async function (context, timer) {
     // Don't post if last AI msg was < 25 min ago (safety)
     if ((now - lastAi.timestamp) < 25 * 60 * 1000) {
       context.log('[chat-timer] Skipped — too soon since last AI post');
+      context.res = { status: 200, body: { skipped: true, reason: 'too soon' } };
       return;
     }
     const lastIdx = AI_PERSONAS.findIndex(p => p.persona === lastAi.persona);
@@ -182,6 +185,7 @@ module.exports = async function (context, timer) {
   const headlines = await fetchHeadlines();
   if (!headlines.length) {
     context.log.warn('[chat-timer] No headlines available');
+    context.res = { status: 200, body: { skipped: true, reason: 'no headlines' } };
     return;
   }
 
@@ -234,6 +238,7 @@ module.exports = async function (context, timer) {
       aiText = aiText.slice(1, -1);
     if (!aiText || aiText.length < 5) {
       context.log.warn(`[chat-timer] Empty response from ${persona.persona}`);
+      context.res = { status: 200, body: { skipped: true, reason: 'empty response' } };
       return;
     }
 
@@ -274,7 +279,9 @@ module.exports = async function (context, timer) {
     }
 
     await writeMessages(container, msgs.slice(-MAX_MESSAGES));
+    context.res = { status: 200, body: { ok: true, persona: persona.persona, len: aiText.length } };
   } catch (e) {
     context.log.error(`[chat-timer] AI generation failed:`, e.message);
+    context.res = { status: 500, body: { error: e.message } };
   }
 };
