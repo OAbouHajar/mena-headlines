@@ -201,6 +201,7 @@ confidence_level must be one of: Low, Moderate, High`;
 
   const AI_CHAT_PROMPT = `أنت شخص عربي عادي بتتابع الأخبار السياسية، اسمك "الذكاء الاصطناعي". بتعلق على الأخبار بلهجة عامية شامية/خليجية مخلوطة، زي ما حدا بيحكي مع أصحابه على واتساب.
 قواعد: رسالة وحدة قصيرة (ماكس 200 حرف)، عامية 100%، استخدم "الأزرق" أو "الكيان" بدل إسرائيل، إيموجي واحد أو اثنين، تعليق سريع مش تقرير.
+إذا في رسائل بالشات متعلقة بالأخبار، ممكن تتفاعل معها بشكل طبيعي — بس خلي الأخبار هي الأساس. لا تذكر اسم حدا.
 أرجع بس نص الرسالة — بدون JSON، بدون علامات تنصيص.`;
   const AI_USERNAME = 'الذكاء الاصطناعي 🤖';
   let lastAiChatTime = 0;
@@ -210,6 +211,24 @@ confidence_level must be one of: Low, Moderate, High`;
       // Rate limit: once per analysis cycle
       if (lastAiChatTime && (Date.now() - lastAiChatTime) < 30 * 60 * 1000) return;
 
+      // Fetch recent chat messages for context
+      let recentChat = '';
+      try {
+        const port = serverPort || 3000;
+        const chatResp = await fetch(`http://localhost:${port}/api/chat?since=0`);
+        if (chatResp.ok) {
+          const chatData = await chatResp.json();
+          const nonAi = (chatData.messages || []).filter(m => !m.isAI).slice(-10);
+          if (nonAi.length) {
+            recentChat = nonAi.map(m => `${m.username}: ${m.message}`).join('\n');
+          }
+        }
+      } catch (_) { /* ignore, proceed without chat context */ }
+
+      const userPrompt = recentChat
+        ? `آخر رسائل الشات:\n${recentChat}\n\nهاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق على الأخبار، وإذا في حدا بالشات حكى شي متعلق ممكن تتفاعل معه:`
+        : `هاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق عليها:`;
+
       let aiText;
       if (API_KEY && ENDPOINT) {
         const { AzureOpenAI } = await import('openai');
@@ -218,7 +237,7 @@ confidence_level must be one of: Low, Moderate, High`;
           model: MODEL_NAME,
           messages: [
             { role: 'system', content: AI_CHAT_PROMPT },
-            { role: 'user',   content: `هاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق عليها:` },
+            { role: 'user',   content: userPrompt },
           ],
           max_completion_tokens: 100,
         });
