@@ -1,4 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 // ── Presence Plugin — dev mirror of /api/presence Azure Function ──────────────
 function presencePlugin() {
@@ -217,42 +219,71 @@ confidence_level must be one of: Low, Moderate, High`;
     },
   ];
   const AI_USERNAMES = AI_PERSONAS.map(p => p.username);
-  let lastAiChatSlot = -1; // tracks which 2-hour slot we last posted (0,2,4,...22)
+  let lastAiPostTime = 0;       // timestamp of last AI post
+  let nextPersonaIdx = 0;       // rotate: 0=iranian, 1=western, 2=neutral
   let aiChatInProgress = false;
-  let isFirstRun = true;   // inject AI messages on first startup
+  let isFirstRun = true;        // inject all 3 on first startup
+  const AI_POST_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
   async function postAiChatDev(headlines, serverPort) {
     try {
-      // Prevent concurrent calls (multiple runAnalysis('ar') fire in parallel)
       if (aiChatInProgress) return;
-      const currentHour = new Date().getHours();
-      const currentSlot = currentHour - (currentHour % 2); // 0,2,4,...22
-      // On first run: always post (inject starting messages)
-      // After that: only post at even-hour boundaries (every 2 hours)
-      if (!isFirstRun && currentSlot === lastAiChatSlot) return;
+      const now = Date.now();
+      // On first run: always post all 3; after that: 1 every 30 min
+      if (!isFirstRun && (now - lastAiPostTime) < AI_POST_INTERVAL) return;
       aiChatInProgress = true;
 
+      const port = serverPort || 3000;
+
       // Fetch recent chat messages for context
+      let allMsgs = [];
       let recentChat = '';
       try {
-        const port = serverPort || 3000;
         const chatResp = await fetch(`http://localhost:${port}/api/chat?since=0`);
         if (chatResp.ok) {
           const chatData = await chatResp.json();
-          const nonAi = (chatData.messages || []).filter(m => !m.isAI).slice(-10);
+          allMsgs = chatData.messages || [];
+          const nonAi = allMsgs.filter(m => !m.isAI).slice(-10);
           if (nonAi.length) {
             recentChat = nonAi.map(m => `${m.username}: ${m.message}`).join('\n');
           }
         }
       } catch (_) { /* ignore */ }
 
-      const port = serverPort || 3000;
+      // Pick which persona(s) to post
+      const personasToPost = isFirstRun ? AI_PERSONAS : [AI_PERSONAS[nextPersonaIdx % AI_PERSONAS.length]];
 
-      for (const persona of AI_PERSONAS) {
+      for (const persona of personasToPost) {
         try {
+          // Decide interaction mode: reply to user, debate another AI, or standalone
+          let interactionPrompt = '';
+          let replyToId = null;
+
+          // 1. Check for recent user messages to reply to
+          const recentUserMsgs = allMsgs.filter(m => !m.isAI && (now - m.timestamp) < 60 * 60 * 1000).slice(-5);
+          // 2. Check for other AI persona msgs to debate
+          const otherAiMsgs = allMsgs
+            .filter(m => m.isAI && m.persona !== persona.persona && (now - m.timestamp) < 2 * 60 * 60 * 1000)
+            .slice(-3);
+
+          const roll = Math.random();
+          if (recentUserMsgs.length > 0 && roll < 0.4) {
+            // 40% chance: reply to a random recent user message
+            const target = recentUserMsgs[Math.floor(Math.random() * recentUserMsgs.length)];
+            replyToId = target.id;
+            interactionPrompt = `\n\nفي مستخدم كتب: "${target.message}"\nرد عليه من وجهة نظرك — وافقه أو اختلف معه بأسلوب طبيعي ومحترم. بعدين علّق على الأخبار.`;
+          } else if (otherAiMsgs.length > 0 && roll < 0.7) {
+            // 30% chance: debate another AI persona
+            const target = otherAiMsgs[Math.floor(Math.random() * otherAiMsgs.length)];
+            replyToId = target.id;
+            const otherName = AI_PERSONAS.find(p => p.persona === target.persona)?.username || target.username;
+            interactionPrompt = `\n\nالمحلل الثاني "${otherName}" قال: "${target.message}"\nاختلف معه أو وافقه جزئياً — ناقشه بأسلوب طبيعي وحاد بس محترم. بعدين أضف تعليقك على الأخبار.`;
+          }
+          // else 30%: standalone comment on news
+
           const userPrompt = recentChat
-            ? `آخر رسائل الشات:\n${recentChat}\n\nهاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق على الأخبار من وجهة نظرك:`
-            : `هاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق عليها من وجهة نظرك:`;
+            ? `آخر رسائل الشات:\n${recentChat}\n\nهاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق على الأخبار من وجهة نظرك:${interactionPrompt}`
+            : `هاي آخر الأخبار:\n${headlines.slice(0, 12).join('\n')}\n\nعلّق عليها من وجهة نظرك:${interactionPrompt}`;
 
           let aiText;
           if (API_KEY && ENDPOINT) {
@@ -285,24 +316,45 @@ confidence_level must be one of: Low, Moderate, High`;
             aiText = samples[persona.persona];
           }
 
+          // Post the message (with optional replyTo)
+          const postBody = { username: persona.username, message: aiText, persona: persona.persona };
+          if (replyToId) postBody.replyTo = replyToId;
+
           await fetch(`http://localhost:${port}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: persona.username, message: aiText }),
+            body: JSON.stringify(postBody),
           });
-          console.log(`[intelligence] AI chat (${persona.persona}): "${aiText.slice(0, 50)}..."`);
+          console.log(`[intelligence] AI chat (${persona.persona})${replyToId ? ' [reply]' : ''}: "${aiText.slice(0, 50)}..."`);
+
+          // AI reacts to 1-2 recent user messages (👍 or ❤️)
+          const reactTargets = allMsgs
+            .filter(m => !m.isAI && (now - m.timestamp) < 2 * 60 * 60 * 1000)
+            .slice(-5);
+          const numReacts = Math.min(reactTargets.length, Math.random() < 0.5 ? 1 : 2);
+          const shuffled = reactTargets.sort(() => Math.random() - 0.5).slice(0, numReacts);
+          for (const target of shuffled) {
+            const reaction = Math.random() < 0.6 ? '👍' : '❤️';
+            try {
+              await fetch(`http://localhost:${port}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId: target.id, reaction, username: persona.username }),
+              });
+            } catch (_) { /* ignore */ }
+          }
         } catch (e) {
           console.warn(`[intelligence] AI chat (${persona.persona}) dev failed:`, e.message);
         }
       }
 
-      const h = new Date().getHours();
-      lastAiChatSlot = h - (h % 2);
-      if (isFirstRun) {
-        console.log(`[intelligence] AI chat injected as starting point`);
-        isFirstRun = false;
+      lastAiPostTime = Date.now();
+      if (!isFirstRun) {
+        nextPersonaIdx = (nextPersonaIdx + 1) % AI_PERSONAS.length;
+        console.log(`[intelligence] AI chat posted (next: ${AI_PERSONAS[nextPersonaIdx].persona} in 30min)`);
       } else {
-        console.log(`[intelligence] AI chat posted for ${lastAiChatSlot}:00 slot`);
+        console.log(`[intelligence] AI chat injected as starting point (all 3 personas)`);
+        isFirstRun = false;
       }
     } catch (e) {
       console.warn('[intelligence] AI chat dev failed:', e.message);
@@ -339,7 +391,8 @@ confidence_level must be one of: Low, Moderate, High`;
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.` },
       ],
-      max_completion_tokens: 2000,
+      max_completion_tokens: 4096,
+      reasoning_effort: 'low',
     });
 
     const choice = response.choices?.[0];
@@ -380,17 +433,15 @@ confidence_level must be one of: Low, Moderate, High`;
       };
       prewarm(); // start immediately
 
-      // Schedule next run at the top of the next even hour, then every 2 hours
-      const now = new Date();
-      const currentH = now.getHours();
-      const nextEvenH = currentH + (2 - (currentH % 2)); // next even hour
-      const msUntilNextSlot = ((nextEvenH - currentH) * 60 - now.getMinutes()) * 60 * 1000
-                              - now.getSeconds() * 1000 - now.getMilliseconds();
-      setTimeout(() => {
-        prewarm();
-        setInterval(prewarm, 2 * 60 * 60 * 1000); // then every 2 hours
-      }, msUntilNextSlot);
-      console.log(`[intelligence] Next AI chat at ${nextEvenH}:00 (in ${Math.round(msUntilNextSlot / 60000)} min)`);
+      // Schedule AI chat: every 30 minutes (rotating persona)
+      setInterval(() => {
+        // Trigger an Arabic analysis which will fire postAiChatDev
+        runAnalysis('ar').catch(e => console.warn(`[intelligence] Scheduled AR analysis failed:`, e.message));
+      }, 30 * 60 * 1000);
+
+      // Also refresh intelligence cache every hour
+      setInterval(prewarm, 60 * 60 * 1000);
+      console.log(`[intelligence] AI chat: 1 persona every 30min (rotating), next in ~30min`);
 
       server.middlewares.use('/api/intelligence', (req, res) => {
         if (req.method !== 'POST') {
@@ -977,7 +1028,22 @@ function tweetsPlugin() {
 function chatPlugin() {
   const MAX_MESSAGES = 200;
   const MAX_MSG_LEN  = 500;
+  const CHAT_FILE = join(process.cwd(), '.chat-dev.json');
+
+  // Load persisted messages (survive server restarts)
   let messages = [];
+  try {
+    if (existsSync(CHAT_FILE)) {
+      messages = JSON.parse(readFileSync(CHAT_FILE, 'utf8'));
+    }
+  } catch { messages = []; }
+
+  function persist() {
+    try { writeFileSync(CHAT_FILE, JSON.stringify(messages.slice(-MAX_MESSAGES))); } catch {}
+  }
+
+  // AI username detection
+  const AI_NAMES = ['محلل AI إيراني 🤖', 'محلل AI أميركي 🤖', 'محلل AI حيادي 🤖'];
 
   return {
     name: 'chat',
@@ -1037,6 +1103,11 @@ function chatPlugin() {
             timestamp: Date.now(),
             reactions: {},
           };
+          // Detect AI messages
+          if (AI_NAMES.includes(username)) {
+            newMsg.isAI = true;
+            newMsg.persona = body.persona || '';
+          }
           if (replyTo) {
             const parent = messages.find(m => m.id === replyTo);
             if (parent) {
@@ -1045,6 +1116,7 @@ function chatPlugin() {
           }
           messages.push(newMsg);
           messages = messages.slice(-MAX_MESSAGES);
+          persist();
           send(201, { message: newMsg });
           return;
         }

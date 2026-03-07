@@ -1,0 +1,18 @@
+name: AI Chat Cron
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Every 30 minutes
+  workflow_dispatch: {}       # Allow manual trigger
+
+jobs:
+  post_ai_chat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger AI Chat
+        run: |
+          curl -sf -X POST \
+            "${{ secrets.SWA_URL }}/api/chat-timer" \
+            -H "Content-Type: application/json" \
+            -d '{"source":"cron"}' \
+            --max-time 60 || echo "Request failed (non-critical)"
