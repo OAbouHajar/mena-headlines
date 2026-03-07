@@ -104,7 +104,7 @@ function intelligencePlugin(env) {
   const API_KEY     = env.AZURE_OPENAI_API_KEY;
   const API_VERSION = '2024-12-01-preview';
   const ENDPOINT    = env.AZURE_OPENAI_ENDPOINT;
-  const MODEL_NAME  = env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+  const MODEL_NAME  = (env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini').trim();
   const DEPLOYMENT  = MODEL_NAME;
 
   // RSS feeds — English (politics & world affairs only)
@@ -203,7 +203,7 @@ confidence_level must be one of: Low, Moderate, High`;
     {
       username: 'محلل AI إيراني 🤖',
       persona: 'iranian',
-      prompt: `أنت محلل سياسي إيراني بتتابع الأخبار من وجهة نظر إيران ومحور المقاومة. عامية 100%، 300-500 حرف، 3-4 جمل زي رسالة واتساب حقيقية، استخدم "الأزرق" أو "الكيان" بدل إسرائيل، إيموجي 2-3. دافع عن محور المقاومة وإيران، انتقد أمريكا. احكي بأسلوب إنسان حقيقي — مشاعر، ردة فعل، تساؤلات. أرجع بس نص الرسالة.`
+      prompt: `أنت محلل سياسي إيراني بتتابع الأخبار من وجهة نظر إيران. عامية 100%، 300-500 حرف، 3-4 جمل زي رسالة واتساب حقيقية، استخدم "الأزرق" أو "الكيان" بدل إسرائيل، إيموجي 2-3. عبّر عن وجهة نظر إيران بشكل طبيعي وحلل الأحداث من منظورهم. حافظ على أسلوب محترم وتحليلي. احكي بأسلوب إنسان حقيقي — مشاعر، ردة فعل، تساؤلات. أرجع بس نص الرسالة.`
     },
     {
       username: 'محلل AI أميركي 🤖',
@@ -218,11 +218,15 @@ confidence_level must be one of: Low, Moderate, High`;
   ];
   const AI_USERNAMES = AI_PERSONAS.map(p => p.username);
   let lastAiChatTime = 0;
+  let aiChatInProgress = false;
 
   async function postAiChatDev(headlines, serverPort) {
     try {
+      // Prevent concurrent calls (multiple runAnalysis('ar') fire in parallel)
+      if (aiChatInProgress) return;
       // Rate limit: 15 min in dev
       if (lastAiChatTime && (Date.now() - lastAiChatTime) < 15 * 60 * 1000) return;
+      aiChatInProgress = true;
 
       // Fetch recent chat messages for context
       let recentChat = '';
@@ -256,15 +260,21 @@ confidence_level must be one of: Low, Moderate, High`;
                 { role: 'system', content: persona.prompt },
                 { role: 'user',   content: userPrompt },
               ],
-              max_completion_tokens: 250,
+              max_completion_tokens: 4096,
+              reasoning_effort: 'low',
             });
-            aiText = (resp.choices?.[0]?.message?.content || '').trim();
+            const choice = resp.choices?.[0];
+            console.log(`[intelligence] AI chat (${persona.persona}) finish_reason=${choice?.finish_reason}, content_len=${(choice?.message?.content || '').length}`);
+            aiText = (choice?.message?.content || '').trim();
             aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
             if (aiText.startsWith('"') && aiText.endsWith('"')) aiText = aiText.slice(1, -1);
+          } else {
+            console.warn(`[intelligence] AI chat (${persona.persona}) SKIPPED — no API_KEY or ENDPOINT`);
           }
           if (!aiText || aiText.length < 5) {
+            console.warn(`[intelligence] AI chat (${persona.persona}) FALLBACK — aiText was: "${aiText || '(empty)'}"`);
             const samples = {
-              iranian:  'والله محور المقاومة ما رح يسكت... الأزرق لازم يفهم إنو في خط أحمر 🔥',
+              iranian:  'يعني إيران موقفها واضح من البداية... السؤال هلق شو رح يصير بالمنطقة 🤔',
               western:  'يعني إيران عم تلعب بالنار والمنطقة كلها بتدفع الثمن 🤷‍♂️',
               neutral:  'الوضع صعب على الكل... لا هاد صح ولا هاد — الناس يللي بتدفع الثمن 💔',
             };
@@ -285,6 +295,8 @@ confidence_level must be one of: Low, Moderate, High`;
       lastAiChatTime = Date.now();
     } catch (e) {
       console.warn('[intelligence] AI chat dev failed:', e.message);
+    } finally {
+      aiChatInProgress = false;
     }
   }
 

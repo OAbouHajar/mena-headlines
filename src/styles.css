@@ -541,7 +541,7 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 }
 .chat-subtitle {
     font-size: 11px;
-    color: #8a9bb5;
+    color: #d6a750;
     margin: 2px 0 0 0;
     font-weight: 400;
     letter-spacing: 0;
