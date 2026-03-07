@@ -320,16 +320,20 @@ async function postAiChatMessage(headlines) {
     if (!chatContainer) return;
     await chatContainer.createIfNotExists();
 
-    // Only post once per 2-hour slot (e.g. 0:00, 2:00, 4:00, ..., 22:00)
     const msgs = await readChatMessages(chatContainer);
+    const now = Date.now();
+
+    // Determine which persona to post next (rotate based on last AI msg persona)
     const lastAi = [...msgs].reverse().find(m => AI_USERNAMES.includes(m.username));
+    let personaIdx = 0;
     if (lastAi) {
-      const lastH = new Date(lastAi.timestamp).getHours();
-      const lastSlot = lastH - (lastH % 2);
-      const curH = new Date().getHours();
-      const curSlot = curH - (curH % 2);
-      if (lastSlot === curSlot) return;
+      // Rate limit: don't post if last AI msg was < 25 min ago
+      if ((now - lastAi.timestamp) < 25 * 60 * 1000) return;
+      // Rotate to next persona
+      const lastIdx = AI_PERSONAS.findIndex(p => p.persona === lastAi.persona);
+      personaIdx = (lastIdx + 1) % AI_PERSONAS.length;
     }
+    const persona = AI_PERSONAS[personaIdx];
 
     const client = new AzureOpenAI({
       apiKey: API_KEY, apiVersion: API_VERSION,
@@ -343,44 +347,86 @@ async function postAiChatMessage(headlines) {
       .map(m => `${m.username}: ${m.message}`)
       .join('\n');
 
-    // Generate a message for each persona
-    for (const persona of AI_PERSONAS) {
-      try {
-        const userPrompt = recentChat
-          ? `آخر رسائل الشات:\n${recentChat}\n\nهاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق على الأخبار من وجهة نظرك:`
-          : `هاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق عليها من وجهة نظرك:`;
+    // Decide interaction mode: reply to user, debate another AI, or standalone
+    let interactionPrompt = '';
+    let replyToMsg = null;
 
-        const response = await client.chat.completions.create({
-          model: MODEL_NAME,
-          messages: [
-            { role: 'system', content: persona.prompt },
-            { role: 'user',   content: userPrompt },
-          ],
-          max_completion_tokens: 4096,
-          reasoning_effort: 'low',
-        });
+    const recentUserMsgs = msgs.filter(m => !m.isAI && (now - m.timestamp) < 60 * 60 * 1000).slice(-5);
+    const otherAiMsgs = msgs
+      .filter(m => m.isAI && m.persona !== persona.persona && (now - m.timestamp) < 2 * 60 * 60 * 1000)
+      .slice(-3);
 
-        let aiText = (response.choices?.[0]?.message?.content || '').trim();
-        if ((aiText.startsWith('"') && aiText.endsWith('"')) || (aiText.startsWith("'") && aiText.endsWith("'")))
-          aiText = aiText.slice(1, -1);
-        if (!aiText || aiText.length < 5) continue;
+    const roll = Math.random();
+    if (recentUserMsgs.length > 0 && roll < 0.4) {
+      // 40%: reply to a user
+      const target = recentUserMsgs[Math.floor(Math.random() * recentUserMsgs.length)];
+      replyToMsg = target;
+      interactionPrompt = `\n\nفي مستخدم كتب: "${target.message}"\nرد عليه من وجهة نظرك — وافقه أو اختلف معه بأسلوب طبيعي ومحترم. بعدين علّق على الأخبار.`;
+    } else if (otherAiMsgs.length > 0 && roll < 0.7) {
+      // 30%: debate another AI
+      const target = otherAiMsgs[Math.floor(Math.random() * otherAiMsgs.length)];
+      replyToMsg = target;
+      const otherName = AI_PERSONAS.find(p => p.persona === target.persona)?.username || target.username;
+      interactionPrompt = `\n\nالمحلل الثاني "${otherName}" قال: "${target.message}"\nاختلف معه أو وافقه جزئياً — ناقشه بأسلوب طبيعي وحاد بس محترم. بعدين أضف تعليقك على الأخبار.`;
+    }
 
-        // Safety: force replace
-        aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
+    const userPrompt = recentChat
+      ? `آخر رسائل الشات:\n${recentChat}\n\nهاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق على الأخبار من وجهة نظرك:${interactionPrompt}`
+      : `هاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق عليها من وجهة نظرك:${interactionPrompt}`;
 
-        const newMsg = {
-          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-          username: persona.username,
-          message: aiText.slice(0, 500),
-          timestamp: Date.now(),
-          reactions: {},
-          isAI: true,
-          persona: persona.persona,
+    try {
+      const response = await client.chat.completions.create({
+        model: MODEL_NAME,
+        messages: [
+          { role: 'system', content: persona.prompt },
+          { role: 'user',   content: userPrompt },
+        ],
+        max_completion_tokens: 4096,
+        reasoning_effort: 'low',
+      });
+
+      let aiText = (response.choices?.[0]?.message?.content || '').trim();
+      if ((aiText.startsWith('"') && aiText.endsWith('"')) || (aiText.startsWith("'") && aiText.endsWith("'")))
+        aiText = aiText.slice(1, -1);
+      if (!aiText || aiText.length < 5) return;
+
+      aiText = aiText.replace(/إسرائيل/g, 'الأزرق').replace(/اسرائيل/g, 'الأزرق');
+
+      const newMsg = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        username: persona.username,
+        message: aiText.slice(0, 500),
+        timestamp: Date.now(),
+        reactions: {},
+        isAI: true,
+        persona: persona.persona,
+      };
+
+      // Add replyTo if interacting
+      if (replyToMsg) {
+        newMsg.replyTo = {
+          id: replyToMsg.id,
+          username: replyToMsg.username,
+          message: replyToMsg.message.slice(0, 80),
         };
-        msgs.push(newMsg);
-        console.log(`[intelligence] AI chat (${persona.persona}): "${aiText.slice(0, 50)}..."`);
-      } catch (e) {
-        console.warn(`[intelligence] AI chat (${persona.persona}) failed:`, e.message);
+      }
+
+      msgs.push(newMsg);
+      console.log(`[intelligence] AI chat (${persona.persona})${replyToMsg ? ' [reply]' : ''}: "${aiText.slice(0, 50)}..."`);
+    } catch (e) {
+      console.warn(`[intelligence] AI chat (${persona.persona}) failed:`, e.message);
+    }
+
+    // AI reacts to 1-2 recent user messages
+    const reactTargets = msgs.filter(m => !m.isAI && (now - m.timestamp) < 2 * 60 * 60 * 1000).slice(-5);
+    const numReacts = Math.min(reactTargets.length, Math.random() < 0.5 ? 1 : 2);
+    const shuffled = reactTargets.sort(() => Math.random() - 0.5).slice(0, numReacts);
+    for (const target of shuffled) {
+      const reaction = Math.random() < 0.6 ? '👍' : '❤️';
+      if (!target.reactions) target.reactions = {};
+      if (!target.reactions[reaction]) target.reactions[reaction] = [];
+      if (!target.reactions[reaction].includes(persona.username)) {
+        target.reactions[reaction].push(persona.username);
       }
     }
 
@@ -502,7 +548,8 @@ module.exports = async function (context, req) {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: userMessage },
       ],
-      max_completion_tokens: 2000,
+      max_completion_tokens: 4096,
+      reasoning_effort: 'low',
     });
 
     const choice  = response.choices?.[0];
