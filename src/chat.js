@@ -19,7 +19,7 @@ const STORAGE_KEY      = 'ytmv_chat_username';
 const REACTIONS        = ['👍', '❤️', '😂', '😮', '👎'];
 
 // ─── DOM refs ────────────────────────────────────────────────────────────────
-let fab, badge, panel, closeBtn, usernameBtn;
+let fab, badge, panel, closeBtn, usernameBtn, chatHeaderBtn;
 let usernameBar, usernameInput, usernameSetBtn;
 let messagesEl, emptyEl;
 let replyBar, replyText, replyCancel;
@@ -155,11 +155,19 @@ function scrollToBottom() {
 
 function updateBadge() {
   if (unreadCount > 0 && !isOpen) {
-    badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-    badge.classList.add('visible');
+    const text = unreadCount > 99 ? '99+' : unreadCount;
+    if (badge) {
+      badge.textContent = text;
+      badge.classList.add('visible');
+    }
+    // On mobile, show dot indicator on header button
+    chatHeaderBtn?.classList.add('has-unread');
   } else {
-    badge.classList.remove('visible');
-    badge.textContent = '';
+    if (badge) {
+      badge.classList.remove('visible');
+      badge.textContent = '';
+    }
+    chatHeaderBtn?.classList.remove('has-unread');
   }
 }
 
@@ -203,21 +211,35 @@ async function fullRefresh() {
 // ─── Actions ─────────────────────────────────────────────────────────────────
 function openChat() {
   isOpen = true;
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
   panel.classList.remove('closed');
-  fab.classList.add('hidden');
+  if (isMobile) {
+    panel.classList.add('mobile-open');
+    chatHeaderBtn?.classList.add('active');
+  } else {
+    fab.classList.add('hidden');
+    chatInput.focus();
+  }
   unreadCount = 0;
   updateBadge();
-  // On mobile, don't focus input — let user read messages first.
-  // Keyboard only opens when they tap the input field.
-  const isMobile = window.matchMedia('(max-width: 768px)').matches;
-  if (!isMobile) chatInput.focus();
   scrollToBottom();
 }
 
 function closeChat() {
   isOpen = false;
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
   panel.classList.add('closed');
-  fab.classList.remove('hidden');
+  if (isMobile) {
+    panel.classList.remove('mobile-open');
+    chatHeaderBtn?.classList.remove('active');
+  } else {
+    fab.classList.remove('hidden');
+  }
+}
+
+function toggleChat() {
+  if (isOpen) closeChat();
+  else openChat();
 }
 
 function setReply(msgId) {
@@ -329,7 +351,9 @@ export function initChat() {
   chatInput      = document.getElementById('chatInput');
   sendBtn        = document.getElementById('chatSendBtn');
 
-  if (!fab || !panel) return;
+  chatHeaderBtn  = document.getElementById('chatHeaderBtn');
+
+  if (!panel) return;
 
   // If username already set, hide the prompt
   if (username) {
@@ -341,14 +365,14 @@ export function initChat() {
   if (isMobile) {
     isOpen = false;
     panel.classList.add('closed');
-    fab.classList.remove('hidden');
   } else {
     isOpen = true;
-    fab.classList.add('hidden');
+    fab?.classList.add('hidden');
   }
 
   // Events
-  fab.addEventListener('click', openChat);
+  fab?.addEventListener('click', openChat);
+  chatHeaderBtn?.addEventListener('click', toggleChat);
   closeBtn.addEventListener('click', closeChat);
   usernameBtn.addEventListener('click', promptUsername);
 

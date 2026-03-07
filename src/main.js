@@ -754,6 +754,9 @@ if (isMobile()) {
   document.getElementById('statsBtn')?.classList.remove('active');
   document.getElementById('flightPanel')?.classList.add('closed');
   document.getElementById('flightBtn')?.classList.remove('active');
+  document.getElementById('chatPanel')?.classList.add('closed');
+  document.getElementById('chatPanel')?.classList.remove('mobile-open');
+  document.getElementById('chatHeaderBtn')?.classList.remove('active');
 }
 
 // ============ Live Users Counter ============

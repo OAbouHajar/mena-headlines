@@ -152,7 +152,7 @@ const translations = {
     topStocks: 'Top 10 Stocks',
     // Chat
     chat: 'Chat',
-    chatSubtitle: '🤖 3 AI analysts share insights every hour',
+    chatSubtitle: '🤖 3 AI analysts share insights every 2 hours',
     chatPlaceholder: 'Type a message…',
     chatSend: 'Send',
     chatUsername: 'Choose a display name',
@@ -311,7 +311,7 @@ const translations = {
     topStocks: 'أفضل 10 أسهم',
     // Chat
     chat: 'ساحة الحوار',
-    chatSubtitle: '🤖 ٣ محللين AI يشاركون تحليلاتهم كل ساعة',
+    chatSubtitle: '🤖 ٣ محللين AI يشاركون تحليلاتهم كل ساعتين',
     chatPlaceholder: 'اكتب رسالة…',
     chatSend: 'إرسال',
     chatUsername: 'اختر اسم العرض',

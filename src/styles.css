@@ -1504,6 +1504,29 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 .btn-flight:active { transform: scale(0.96); }
 .btn-flight svg { flex-shrink: 0; }
 
+/* ── Chat Header Button (mobile only — hidden on desktop) ── */
+.btn-chat {
+    display: none; /* hidden on desktop — chat uses side panel + FAB */
+}
+.btn-chat.active {
+    background: rgba(78,168,222,0.12);
+    border-color: rgba(78,168,222,0.45);
+    color: #74c0e8;
+}
+.btn-chat {
+    position: relative;
+}
+.btn-chat.has-unread::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger, #e74c3c);
+}
+
 /* ── Header ticker divider & flight ticker ── */
 .header-ticker-divider {
     width: 1px;
@@ -3799,34 +3822,52 @@ a.news-source-label:hover { filter: brightness(1.2); }
 
 /* ── Chat responsive ─────────────────────────────────── */
 @media (max-width: 768px) {
+    /* Hide FAB on mobile — use header button instead */
     .chat-fab {
-        bottom: calc(var(--ticker-height) + 10px);
-        right: 10px;
-        width: 44px;
-        height: 44px;
+        display: none !important;
     }
-    [dir="rtl"] .chat-fab {
-        right: auto;
-        left: 10px;
+    /* Show header chat button on mobile */
+    .btn-chat {
+        display: flex;
+        background: transparent;
+        color: #4ea8de;
+        border: 1px solid rgba(78,168,222,0.30);
+        padding: 5px 12px;
+        gap: 7px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        transition: all 0.18s ease;
     }
+    .btn-chat:hover {
+        background: rgba(78,168,222,0.10);
+        border-color: rgba(78,168,222,0.50);
+        color: #74c0e8;
+    }
+    .btn-chat svg { flex-shrink: 0; }
+    /* Chat panel — same bottom sheet as flight panel */
     .chat-standalone {
-        /* On mobile, full-screen overlay */
         position: fixed;
-        top: 0;
-        bottom: 0;
+        top: var(--header-height);
         left: 0;
         right: 0;
+        bottom: 0;
         width: 100% !important;
-        height: 100% !important;
-        max-height: 100vh;
+        height: auto !important;
+        max-height: none;
         border-radius: 0;
         border: none;
         z-index: 600;
-        transition: transform 0.28s var(--ease-out-expo), opacity 0.22s;
+        transform: translateY(100%);
+        transition: transform 0.3s var(--ease-out-expo);
+    }
+    .chat-standalone.mobile-open {
+        transform: translateY(0);
     }
     .chat-standalone.closed {
         transform: translateY(100%);
-        opacity: 0;
+        width: 100% !important;
+        opacity: 1;
         pointer-events: none;
     }
     /* Prominent header with close button on mobile */
