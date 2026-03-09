@@ -1,4 +1,5 @@
 import { store } from './store.js';
+import { GROUP_LABELS } from './channels.js';
 import { t, toggleLang, onLangChange } from './i18n.js';
 import { signInWithGoogle, signOutUser } from './firebase.js';
 import { onAuthReady } from './sync.js';
@@ -34,7 +35,13 @@ const modalResolveBtn = $('#modalResolveBtn');
 const modalName = $('#modalName');
 const modalHandle = $('#modalHandle');
 const modalChannelId = $('#modalChannelId');
+const modalGroup = $('#modalGroup');
+const modalCustomGroup = $('#modalCustomGroup');
+const customGroupRow = $('#customGroupRow');
 let modalEditId = null;
+
+// Track collapsed groups in sidebar
+const _collapsedGroups = new Set();
 
 // ============ Dynamic Grid Helper ============
 function gridCols(count) {
@@ -206,37 +213,132 @@ function renderActiveCount() {
 // ============ Render: Channel List ============
 let dragStartIndex = null;
 
-function renderChannelList() {
-  channelCount.textContent = store.channels.length;
-
-  channelList.innerHTML = store.channels
-    .map(
-      (ch, index) => {
-        const isActive = store.isActive(ch.id);
-        const cat = getCategory(ch);
-        const canDrag = !isMobile();
-        return `
+function renderChannelCard(ch, index, isActive) {
+  const canDrag = !isMobile();
+  const isFav = ch.fav;
+  return `
     <div class="channel-card ${isActive ? 'active' : ''}" data-id="${ch.id}" data-index="${index}"${canDrag ? ' draggable="true"' : ''}>
       <div class="channel-avatar" style="background:${ch.logo ? 'transparent' : ch.color}">
         ${ch.logo ? `<img src="${ch.logo}" alt="${esc(ch.name)}" class="channel-logo">` : initials(ch.name)}
       </div>
       <div class="channel-info">
-        <div class="channel-name">${esc(ch.name)}${ch.channelId ? '' : ' ⚠️'}</div>
-        <div class="channel-status-line">${cat}${isActive ? ` · ${t('liveTag')}` : ''}</div>
+        <div class="channel-name">${esc(ch.name)}${ch.channelId ? '' : ' \u26a0\ufe0f'}</div>
+        <div class="channel-status-line">${isActive ? t('liveTag') : ''}</div>
       </div>
       ${isActive ? `<span class="ch-live-chip">${t('liveTag')}</span>` : ''}
       <div class="channel-actions">
-        <button class="btn-icon-sm" data-action="edit" data-id="${ch.id}" title="Edit">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <button class="btn-icon-sm ch-fav-btn ${isFav ? 'ch-fav-active' : ''}" data-action="fav" data-id="${ch.id}" title="${t('group_fav')}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
         </button>
-        <button class="btn-icon-sm" data-action="remove" data-id="${ch.id}" title="Remove" style="color:var(--danger)">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        <button class="btn-icon-sm ch-edit-btn" data-action="edit" data-id="${ch.id}" title="Edit">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
       </div>
     </div>`;
+}
+
+function renderChannelList() {
+  channelCount.textContent = store.channels.length;
+
+  // Collect favorites
+  const favChannels = store.channels.filter((ch) => ch.fav);
+
+  // Group channels
+  const groups = store.getGroups();
+  const grouped = new Map();
+  store.channels.forEach((ch) => {
+    const g = ch.group || '';
+    if (!grouped.has(g)) grouped.set(g, []);
+    grouped.get(g).push(ch);
+  });
+
+  let html = '';
+
+  // Render favorites group first (if any)
+  if (favChannels.length > 0) {
+    const isCollapsed = _collapsedGroups.has('__fav__');
+    const activeInFav = favChannels.filter((ch) => store.isActive(ch.id)).length;
+    const allFavActive = activeInFav === favChannels.length;
+    html += `<div class="channel-group channel-group-fav">
+      <div class="channel-group-header ${isCollapsed ? 'collapsed' : ''}" data-group="__fav__">
+        <svg class="group-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        <span class="group-label group-label-fav">⭐ ${esc(t('group_fav'))}</span>
+        <span class="group-count">${activeInFav}/${favChannels.length}</span>
+        <button class="btn-icon-sm group-toggle-btn" data-group-toggle="__fav__" title="Toggle all">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="${allFavActive ? 'M18 6L6 18M6 6l12 12' : 'M20 6L9 17l-5-5'}"/></svg>
+        </button>
+      </div>
+      <div class="channel-group-body ${isCollapsed ? 'collapsed' : ''}">`;
+    favChannels.forEach((ch) => {
+      const index = store.channels.indexOf(ch);
+      const isActive = store.isActive(ch.id);
+      html += renderChannelCard(ch, index, isActive);
+    });
+    html += `</div></div>`;
+  }
+
+  // Render grouped sections
+  const orderedKeys = [...groups, ...(grouped.has('') ? [''] : [])];
+  orderedKeys.forEach((groupKey) => {
+    const channels = grouped.get(groupKey);
+    if (!channels || channels.length === 0) return;
+
+    const isCollapsed = _collapsedGroups.has(groupKey);
+    const groupLabel = groupKey
+      ? (t('group_' + groupKey) !== 'group_' + groupKey ? t('group_' + groupKey) : (GROUP_LABELS[groupKey] || groupKey))
+      : t('ungrouped');
+    const activeInGroup = channels.filter((ch) => store.isActive(ch.id)).length;
+    const allActive = activeInGroup === channels.length;
+
+    if (groupKey) {
+      html += `<div class="channel-group">
+        <div class="channel-group-header ${isCollapsed ? 'collapsed' : ''}" data-group="${esc(groupKey)}">
+          <svg class="group-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="group-label">${esc(groupLabel)}</span>
+          <span class="group-count">${activeInGroup}/${channels.length}</span>
+          <button class="btn-icon-sm group-toggle-btn" data-group-toggle="${esc(groupKey)}" title="Toggle all">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="${allActive ? 'M18 6L6 18M6 6l12 12' : 'M20 6L9 17l-5-5'}"/></svg>
+          </button>
+        </div>
+        <div class="channel-group-body ${isCollapsed ? 'collapsed' : ''}">`;
+    }
+
+    channels.forEach((ch, i) => {
+      const index = store.channels.indexOf(ch);
+      const isActive = store.isActive(ch.id);
+      html += renderChannelCard(ch, index, isActive);
+    });
+
+    if (groupKey) {
+      html += `</div></div>`;
+    }
+  });
+
+  channelList.innerHTML = html;
+
+  // Group header click: collapse/expand
+  channelList.querySelectorAll('.channel-group-header').forEach((header) => {
+    header.addEventListener('click', (e) => {
+      // Don't toggle if clicking the toggle-all button
+      if (e.target.closest('.group-toggle-btn')) return;
+      const groupKey = header.dataset.group;
+      if (_collapsedGroups.has(groupKey)) {
+        _collapsedGroups.delete(groupKey);
+      } else {
+        _collapsedGroups.add(groupKey);
       }
-    )
-    .join('');
+      header.classList.toggle('collapsed');
+      header.nextElementSibling?.classList.toggle('collapsed');
+    });
+  });
+
+  // Group toggle-all button
+  channelList.querySelectorAll('.group-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      store.toggleGroup(btn.dataset.groupToggle);
+    });
+  });
 
   // Drag and drop event listeners (desktop only)
   if (!isMobile()) {
@@ -250,7 +352,7 @@ function renderChannelList() {
       });
 
       card.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Necessary to allow drop
+        e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         card.classList.add('drag-over');
       });
@@ -410,6 +512,19 @@ function render() {
 }
 
 // ============ Modal ============
+function populateGroupSelect(currentGroup = '') {
+  const groups = store.getGroups();
+  let options = `<option value="" ${!currentGroup ? 'selected' : ''}>${t('groupNone')}</option>`;
+  groups.forEach((g) => {
+    const label = t('group_' + g) !== 'group_' + g ? t('group_' + g) : (GROUP_LABELS[g] || g);
+    options += `<option value="${esc(g)}" ${g === currentGroup ? 'selected' : ''}>${esc(label)}</option>`;
+  });
+  options += `<option value="__new__">${t('groupNew')}</option>`;
+  modalGroup.innerHTML = options;
+  customGroupRow.style.display = 'none';
+  modalCustomGroup.value = '';
+}
+
 function openModal(editId = null) {
   modalEditId = editId;
   modalUrl.value = '';
@@ -420,11 +535,13 @@ function openModal(editId = null) {
     modalName.value = ch.name;
     modalHandle.value = ch.handle;
     modalChannelId.value = ch.channelId || '';
+    populateGroupSelect(ch.group || '');
   } else {
     modalTitle.textContent = t('addNewChannel');
     modalName.value = '';
     modalHandle.value = '';
     modalChannelId.value = '';
+    populateGroupSelect('');
   }
   modalOverlay.classList.add('visible');
   setTimeout(() => modalUrl.focus(), 100);
@@ -439,6 +556,10 @@ function saveModal() {
   const name = modalName.value.trim();
   const handle = normalizeHandle(modalHandle.value.trim());
   const channelId = modalChannelId.value.trim();
+  let group = modalGroup.value;
+  if (group === '__new__') {
+    group = modalCustomGroup.value.trim();
+  }
 
   if (!name) {
     toast(t('toastNameRequired'), 'error');
@@ -447,10 +568,10 @@ function saveModal() {
   }
 
   if (modalEditId) {
-    store.updateChannel(modalEditId, { name, handle, channelId });
+    store.updateChannel(modalEditId, { name, handle, channelId, group });
     toast(t('toastUpdated', name), 'success');
   } else {
-    store.addChannel({ name, handle, channelId });
+    store.addChannel({ name, handle, channelId, group });
     toast(t('toastAdded', name), 'success');
   }
   closeModal();
@@ -490,6 +611,7 @@ function handleChannelCardClick(e) {
       const ch = store.removeChannel(id);
       if (ch) toast(t('toastRemoved', ch.name), 'info');
     }
+    if (action === 'fav') store.toggleFav(id);
     return;
   }
   const card = e.target.closest('.channel-card');
@@ -686,6 +808,13 @@ modalResolveBtn.addEventListener('click', async () => {
   }
 });
 modalUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); modalResolveBtn.click(); } });
+
+// Modal group select: show/hide custom group input
+modalGroup.addEventListener('change', () => {
+  const isNew = modalGroup.value === '__new__';
+  customGroupRow.style.display = isNew ? '' : 'none';
+  if (isNew) modalCustomGroup.focus();
+});
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {

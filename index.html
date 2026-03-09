@@ -327,6 +327,15 @@
                     <label for="modalChannelId"><span data-i18n="channelIdLabel">Channel ID</span> <span class="required" data-i18n="channelIdRequired">(required for embed)</span></label>
                     <input type="text" id="modalChannelId" data-i18n-placeholder="channelIdPlaceholder" placeholder="UCfiwzLy-8yKzIbsmZTzxDgw">
                 </div>
+                <div class="form-field">
+                    <label for="modalGroup" data-i18n="groupLabel">Group</label>
+                    <select id="modalGroup" class="form-select">
+                        <option value="" data-i18n="groupNone">— No group —</option>
+                    </select>
+                    <div class="custom-group-row" id="customGroupRow" style="display:none">
+                        <input type="text" id="modalCustomGroup" maxlength="30" data-i18n-placeholder="customGroupPlaceholder" placeholder="New group name">
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-ghost" id="modalCancelBtn" data-i18n="cancel">Cancel</button>

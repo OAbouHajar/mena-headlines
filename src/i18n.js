@@ -134,7 +134,18 @@ const translations = {
     resolving: '…',
     // Grid
     setStreamId: 'Set stream ID',
-    liveTag: 'Live',
+    liveTag: 'Playing',
+    // Groups
+    groupLabel: 'Group',
+    groupNone: '— No group —',
+    groupNew: '+ New group…',
+    customGroupPlaceholder: 'New group name',
+    ungrouped: 'Other',
+    group_arabic: 'Arabic',
+    group_us: 'US',
+    group_iranian: 'Iranian',
+    group_international: 'International',
+    group_fav: 'Favorites',
     // Flight panel
     flightActiveLabel: 'active flights in region',
     flightByCountry: 'Airspace by Country',
@@ -294,7 +305,18 @@ const translations = {
     resolving: '…',
     // Grid
     setStreamId: 'تعيين معرّف البث',
-    liveTag: 'مباشر',
+    liveTag: 'يعمل',
+    // Groups
+    groupLabel: 'المجموعة',
+    groupNone: '— بدون مجموعة —',
+    groupNew: '+ مجموعة جديدة…',
+    customGroupPlaceholder: 'اسم المجموعة الجديدة',
+    ungrouped: 'أخرى',
+    group_arabic: 'قنوات عربية',
+    group_us: 'قنوات أمريكية',
+    group_iranian: 'قنوات إيرانية',
+    group_international: 'قنوات دولية',
+    group_fav: 'المفضلة',
     // Flight panel
     flightActiveLabel: 'رحلة نشطة في المنطقة',
     flightByCountry: 'الأجواء حسب الدولة',

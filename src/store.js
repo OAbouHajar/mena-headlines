@@ -1,12 +1,18 @@
 /**
  * Lightweight reactive state store backed by localStorage.
  */
-import { DEFAULT_CHANNELS, KNOWN_CHANNEL_IDS, pickColor } from './channels.js';
+import { DEFAULT_CHANNELS, KNOWN_CHANNEL_IDS, DEFAULT_GROUP_MAP, GROUP_LABELS, pickColor } from './channels.js';
 
 const STORAGE_KEYS = {
   channels: 'ytmv_channels',
   active: 'ytmv_active',
+  version: 'ytmv_version',
 };
+
+// Bump this number whenever DEFAULT_CHANNELS or schema changes.
+// This triggers a merge-migration: new defaults are added, old ones updated,
+// custom user channels are kept.
+const STORE_VERSION = 2;
 
 function uid() {
   return 'ch_' + crypto.randomUUID().slice(0, 8);
@@ -32,32 +38,57 @@ class Store {
   }
 
   _init() {
+    const savedVersion = load(STORAGE_KEYS.version, 0);
+    const needsUpgrade = savedVersion < STORE_VERSION;
+
     // Load channels
     const savedChannels = load(STORAGE_KEYS.channels, null);
     if (savedChannels && savedChannels.length > 0) {
       this.channels = savedChannels;
-      // Auto-migrate: add channelId from known mapping
       let migrated = false;
-      // Build logo lookup from defaults
+
+      // Build lookups from defaults
       const defaultLogos = Object.fromEntries(
         DEFAULT_CHANNELS.filter((c) => c.logo).map((c) => [c.channelId, c.logo])
       );
+
+      // Per-channel field migration
       this.channels.forEach((ch) => {
         if (!ch.channelId && ch.handle && KNOWN_CHANNEL_IDS[ch.handle]) {
           ch.channelId = KNOWN_CHANNEL_IDS[ch.handle];
           migrated = true;
         }
         if (!ch.id) { ch.id = uid(); migrated = true; }
-        // Migrate logos from defaults (update if changed)
         if (ch.channelId && defaultLogos[ch.channelId] && ch.logo !== defaultLogos[ch.channelId]) {
           ch.logo = defaultLogos[ch.channelId];
           migrated = true;
         }
+        if (!ch.group && ch.channelId && DEFAULT_GROUP_MAP[ch.channelId]) {
+          ch.group = DEFAULT_GROUP_MAP[ch.channelId];
+          migrated = true;
+        }
       });
-      if (migrated) save(STORAGE_KEYS.channels, this.channels);
+
+      // Version upgrade: merge new default channels the user doesn't have yet
+      if (needsUpgrade) {
+        const existingIds = new Set(this.channels.map((c) => c.channelId));
+        DEFAULT_CHANNELS.forEach((def) => {
+          if (!existingIds.has(def.channelId)) {
+            this.channels.push({ ...def, id: uid() });
+            migrated = true;
+          }
+        });
+      }
+
+      if (migrated || needsUpgrade) save(STORAGE_KEYS.channels, this.channels);
     } else {
       this.channels = DEFAULT_CHANNELS.map((ch) => ({ ...ch, id: uid() }));
       save(STORAGE_KEYS.channels, this.channels);
+    }
+
+    // Persist new version
+    if (needsUpgrade) {
+      save(STORAGE_KEYS.version, STORE_VERSION);
     }
 
     // Load active
@@ -98,7 +129,7 @@ class Store {
     this._emit();
   }
 
-  addChannel({ name, handle, channelId, logo }) {
+  addChannel({ name, handle, channelId, logo, group }) {
     const ch = {
       id: uid(),
       name,
@@ -106,6 +137,7 @@ class Store {
       channelId: channelId || '',
       color: pickColor(this.channels.length),
       logo: logo || '',
+      group: group || '',
     };
     this.channels.push(ch);
     this._save();
@@ -113,12 +145,13 @@ class Store {
     return ch;
   }
 
-  updateChannel(id, { name, handle, channelId }) {
+  updateChannel(id, { name, handle, channelId, group }) {
     const ch = this.channels.find((c) => c.id === id);
     if (!ch) return;
     if (name !== undefined) ch.name = name;
     if (handle !== undefined) ch.handle = handle;
     if (channelId !== undefined) ch.channelId = channelId;
+    if (group !== undefined) ch.group = group;
     this._save();
     this._emit();
   }
@@ -165,6 +198,58 @@ class Store {
 
   isActive(id) {
     return this.active.includes(id);
+  }
+
+  /** Get ordered list of unique groups used by current channels */
+  getGroups() {
+    const order = Object.keys(GROUP_LABELS);
+    const seen = new Set();
+    const groups = [];
+    this.channels.forEach((ch) => {
+      const g = ch.group || '';
+      if (g && !seen.has(g)) { seen.add(g); groups.push(g); }
+    });
+    // Sort: built-in groups first (in defined order), then custom alphabetically
+    groups.sort((a, b) => {
+      const ia = order.indexOf(a);
+      const ib = order.indexOf(b);
+      if (ia >= 0 && ib >= 0) return ia - ib;
+      if (ia >= 0) return -1;
+      if (ib >= 0) return 1;
+      return a.localeCompare(b);
+    });
+    return groups;
+  }
+
+  /** Toggle all channels in a group */
+  toggleGroup(groupKey) {
+    const groupChannels = groupKey === '__fav__'
+      ? this.channels.filter((c) => c.fav)
+      : this.channels.filter((c) => c.group === groupKey);
+    const allActive = groupChannels.every((c) => this.active.includes(c.id));
+    if (allActive) {
+      // Deactivate all in group
+      groupChannels.forEach((c) => {
+        const idx = this.active.indexOf(c.id);
+        if (idx >= 0) this.active.splice(idx, 1);
+      });
+    } else {
+      // Activate all in group
+      groupChannels.forEach((c) => {
+        if (!this.active.includes(c.id)) this.active.push(c.id);
+      });
+    }
+    this._save();
+    this._emit();
+  }
+
+  /** Toggle favorite status on a channel */
+  toggleFav(id) {
+    const ch = this.channels.find((c) => c.id === id);
+    if (!ch) return;
+    ch.fav = !ch.fav;
+    this._save();
+    this._emit();
   }
 }
 
