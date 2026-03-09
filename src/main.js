@@ -95,7 +95,7 @@ function initials(name) {
 
 function embedUrl(channelId, muted = true) {
   if (!channelId || !channelId.startsWith('UC')) return null;
-  return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1${muted ? '&mute=1' : ''}`;
+  return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}${muted ? '&mute=1' : ''}`;
 }
 
 function channelPageUrl(handle) {
@@ -450,7 +450,12 @@ videoGrid.addEventListener('click', (e) => {
     window.open(channelPageUrl(btn.dataset.handle), '_blank');
   }
   if (action === 'fullscreen') {
+    e.stopPropagation();
     const cell = btn.closest('.video-cell');
+    // Debounce: prevent rapid toggle from multiple touch events
+    if (cell._fsLock) return;
+    cell._fsLock = true;
+    setTimeout(() => { cell._fsLock = false; }, 400);
     cell.classList.toggle('fullscreen');
     // Prevent body scroll while fullscreen on mobile
     if (isMobile()) {
@@ -461,11 +466,21 @@ videoGrid.addEventListener('click', (e) => {
     const cell = btn.closest('.video-cell');
     const iframe = cell?.querySelector('iframe');
     if (iframe) {
-      const src = iframe.src.replace('&mute=1', '');
-      iframe.src = '';
-      requestAnimationFrame(() => { iframe.src = src; });
-      btn.classList.add('cell-btn-unmuted');
-      btn.querySelector('svg').innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>';
+      const isMuted = !btn.classList.contains('cell-btn-unmuted');
+      if (isMuted) {
+        // Use postMessage to unmute without reloading the video
+        iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+        // Mark as unmuted (track state on the element, don't touch iframe.src)
+        cell.dataset.unmuted = '1';
+        btn.classList.add('cell-btn-unmuted');
+        btn.querySelector('svg').innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>';
+      } else {
+        // Re-mute
+        iframe.contentWindow.postMessage('{"event":"command","func":"mute","args":""}', '*');
+        delete cell.dataset.unmuted;
+        btn.classList.remove('cell-btn-unmuted');
+        btn.querySelector('svg').innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+      }
     }
   }
   if (action === 'reload') {
