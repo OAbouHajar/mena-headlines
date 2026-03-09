@@ -286,6 +286,9 @@ function renderGrid() {
     if (url) {
       cell.innerHTML = `
         <iframe src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+        <button class="fullscreen-exit-btn" data-action="fullscreen" aria-label="Exit fullscreen">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
         <div class="cell-overlay">
           <div class="cell-overlay-bar">
             <span class="cell-name">${esc(ch.name)}</span>
@@ -449,6 +452,10 @@ videoGrid.addEventListener('click', (e) => {
   if (action === 'fullscreen') {
     const cell = btn.closest('.video-cell');
     cell.classList.toggle('fullscreen');
+    // Prevent body scroll while fullscreen on mobile
+    if (isMobile()) {
+      document.body.style.overflow = cell.classList.contains('fullscreen') ? 'hidden' : '';
+    }
   }
   if (action === 'unmute') {
     const cell = btn.closest('.video-cell');
@@ -602,6 +609,7 @@ document.addEventListener('keydown', (e) => {
     case 'r': $('#refreshBtn').click(); break;
     case 'escape':
       document.querySelectorAll('.video-cell.fullscreen').forEach((c) => c.classList.remove('fullscreen'));
+      if (isMobile()) document.body.style.overflow = '';
       if (document.body.classList.contains('theatre')) document.body.classList.remove('theatre');
       closeSidebarMobile();
       closeModal();
@@ -615,6 +623,7 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('message', (e) => {
   if (e.data === 'yt-close-fullscreen') {
     document.querySelectorAll('.video-cell.fullscreen').forEach((c) => c.classList.remove('fullscreen'));
+    if (isMobile()) document.body.style.overflow = '';
   }
 });
 
