@@ -1,5 +1,5 @@
 /**
- * HTTP-triggered Azure Function — called every 30 minutes by GitHub Actions cron.
+ * HTTP-triggered Azure Function — called every 2 hours by GitHub Actions cron.
  * Posts 1 rotating AI persona message to the chat, with replies/debates/reactions.
  * Independent of user visits — keeps the chat alive 24/7.
  */

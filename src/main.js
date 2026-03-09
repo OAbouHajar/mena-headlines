@@ -93,9 +93,9 @@ function initials(name) {
   return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function embedUrl(channelId) {
+function embedUrl(channelId, muted = true) {
   if (!channelId || !channelId.startsWith('UC')) return null;
-  return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&mute=1`;
+  return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1${muted ? '&mute=1' : ''}`;
 }
 
 function channelPageUrl(handle) {
@@ -286,6 +286,9 @@ function renderGrid() {
     if (url) {
       cell.innerHTML = `
         <iframe src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+        <button class="fullscreen-exit-btn" data-action="fullscreen" aria-label="Exit fullscreen">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
         <div class="cell-overlay">
           <div class="cell-overlay-bar">
             <span class="cell-name">${esc(ch.name)}</span>
@@ -295,6 +298,9 @@ function renderGrid() {
               </button>
               <button class="cell-btn" data-action="fullscreen" title="${t('fullscreen')}">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              </button>
+              <button class="cell-btn cell-btn-unmute" data-action="unmute" title="${t('unmute')}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
               </button>
               <button class="cell-btn" data-action="reload" title="${t('reload')}">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
@@ -446,6 +452,21 @@ videoGrid.addEventListener('click', (e) => {
   if (action === 'fullscreen') {
     const cell = btn.closest('.video-cell');
     cell.classList.toggle('fullscreen');
+    // Prevent body scroll while fullscreen on mobile
+    if (isMobile()) {
+      document.body.style.overflow = cell.classList.contains('fullscreen') ? 'hidden' : '';
+    }
+  }
+  if (action === 'unmute') {
+    const cell = btn.closest('.video-cell');
+    const iframe = cell?.querySelector('iframe');
+    if (iframe) {
+      const src = iframe.src.replace('&mute=1', '');
+      iframe.src = '';
+      requestAnimationFrame(() => { iframe.src = src; });
+      btn.classList.add('cell-btn-unmuted');
+      btn.querySelector('svg').innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>';
+    }
   }
   if (action === 'reload') {
     const iframe = btn.closest('.video-cell').querySelector('iframe');
@@ -588,6 +609,7 @@ document.addEventListener('keydown', (e) => {
     case 'r': $('#refreshBtn').click(); break;
     case 'escape':
       document.querySelectorAll('.video-cell.fullscreen').forEach((c) => c.classList.remove('fullscreen'));
+      if (isMobile()) document.body.style.overflow = '';
       if (document.body.classList.contains('theatre')) document.body.classList.remove('theatre');
       closeSidebarMobile();
       closeModal();
@@ -601,6 +623,7 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('message', (e) => {
   if (e.data === 'yt-close-fullscreen') {
     document.querySelectorAll('.video-cell.fullscreen').forEach((c) => c.classList.remove('fullscreen'));
+    if (isMobile()) document.body.style.overflow = '';
   }
 });
 
