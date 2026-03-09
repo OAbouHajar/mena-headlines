@@ -977,6 +977,21 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     display: block;
 }
 
+/* ── Unmute button ── */
+.cell-btn-unmute {
+    background: rgba(220, 50, 50, 0.85) !important;
+    border: 1px solid rgba(255,255,255,0.3) !important;
+}
+.cell-btn-unmute:hover {
+    background: rgba(220, 50, 50, 1) !important;
+}
+.cell-btn-unmuted {
+    background: rgba(50, 180, 80, 0.85) !important;
+}
+.cell-btn-unmuted:hover {
+    background: rgba(50, 180, 80, 1) !important;
+}
+
 /* ── Hover overlay ── */
 .cell-overlay {
     position: absolute;

@@ -35,6 +35,7 @@ const translations = {
     openYT: 'Open on YouTube',
     fullscreen: 'Fullscreen',
     reload: 'Reload',
+    unmute: 'Unmute',
     // Toasts
     toastAdded: (n) => `Added ${n}`,
     toastAddedWarn: (n) => `Added ${n} — edit to add Channel ID`,
@@ -197,6 +198,7 @@ const translations = {
     openYT: 'فتح على يوتيوب',
     fullscreen: 'ملء الشاشة',
     reload: 'إعادة تحميل',
+    unmute: 'تشغيل الصوت',
     toastAdded: (n) => `تمت إضافة ${n}`,
     toastAddedWarn: (n) => `تمت إضافة ${n} — عدّل لإضافة معرّف القناة`,
     toastUpdated: (n) => `تم تحديث ${n}`,

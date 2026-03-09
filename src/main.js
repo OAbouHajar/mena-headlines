@@ -93,9 +93,9 @@ function initials(name) {
   return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function embedUrl(channelId) {
+function embedUrl(channelId, muted = true) {
   if (!channelId || !channelId.startsWith('UC')) return null;
-  return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&mute=1`;
+  return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1${muted ? '&mute=1' : ''}`;
 }
 
 function channelPageUrl(handle) {
@@ -296,6 +296,9 @@ function renderGrid() {
               <button class="cell-btn" data-action="fullscreen" title="${t('fullscreen')}">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
               </button>
+              <button class="cell-btn cell-btn-unmute" data-action="unmute" title="${t('unmute')}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              </button>
               <button class="cell-btn" data-action="reload" title="${t('reload')}">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
               </button>
@@ -446,6 +449,17 @@ videoGrid.addEventListener('click', (e) => {
   if (action === 'fullscreen') {
     const cell = btn.closest('.video-cell');
     cell.classList.toggle('fullscreen');
+  }
+  if (action === 'unmute') {
+    const cell = btn.closest('.video-cell');
+    const iframe = cell?.querySelector('iframe');
+    if (iframe) {
+      const src = iframe.src.replace('&mute=1', '');
+      iframe.src = '';
+      requestAnimationFrame(() => { iframe.src = src; });
+      btn.classList.add('cell-btn-unmuted');
+      btn.querySelector('svg').innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>';
+    }
   }
   if (action === 'reload') {
     const iframe = btn.closest('.video-cell').querySelector('iframe');
