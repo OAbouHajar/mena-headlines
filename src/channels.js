@@ -19,6 +19,13 @@ export const DEFAULT_CHANNELS = [
     logo: '/logos/alhadath.jpg',
   },
   {
+    name: 'Syria Television',
+    handle: '@SyriaTelevision',
+    channelId: 'UCJsZ22yL1IW0R2u0jnnyYog',
+    color: '#2e7d32',
+    logo: '/logos/syriatelevision.jpg',
+  },
+  {
     name: 'Al Ekhbariah SY',
     handle: '@AlekhbariahSY',
     channelId: 'UClm30t2F4FHzzkN9Irtr-8A',

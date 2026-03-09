@@ -93,15 +93,53 @@ function initials(name) {
   return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
+// Cache of resolved live video IDs: channelId → { videoId, ts }
+const _liveVideoCache = new Map();
+const LIVE_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+
 function embedUrl(channelId, muted = true) {
   if (!channelId || !channelId.startsWith('UC')) return null;
+  // Check if we have a resolved video ID for this channel
+  const cached = _liveVideoCache.get(channelId);
+  if (cached && cached.videoId) {
+    return embedVideoUrl(cached.videoId, muted);
+  }
   return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}${muted ? '&mute=1' : ''}`;
+}
+
+function embedVideoUrl(videoId, muted = true) {
+  return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}${muted ? '&mute=1' : ''}`;
+}
+
+/**
+ * Resolve live video ID for a channel via /api/check-live.
+ * Returns the video ID or empty string.
+ */
+async function checkLiveVideoId(handle, channelId) {
+  // Check cache first
+  const cached = _liveVideoCache.get(channelId);
+  if (cached && Date.now() - cached.ts < LIVE_CACHE_TTL) {
+    return cached.videoId;
+  }
+  try {
+    const param = handle
+      ? `handle=${encodeURIComponent(handle)}`
+      : `channelId=${encodeURIComponent(channelId)}`;
+    const res = await fetch(`/api/check-live?${param}`);
+    if (!res.ok) return '';
+    const data = await res.json();
+    const videoId = data.videoId || '';
+    _liveVideoCache.set(channelId, { videoId, ts: Date.now() });
+    return videoId;
+  } catch {
+    return '';
+  }
 }
 
 function channelPageUrl(handle) {
   if (!handle) return '#';
   const h = handle.startsWith('@') ? handle : '@' + handle;
-  return `https://www.youtube.com/${h}/live`;
+  return `https://www.youtube.com/${h}/streams`;
 }
 
 function parseInput(val) {
@@ -326,6 +364,42 @@ function renderGrid() {
   existing.forEach((cell) => cell.remove());
   videoGrid.innerHTML = '';
   videoGrid.appendChild(fragment);
+
+  // Async: resolve actual live video IDs for newly added cells
+  resolveGridVideoIds();
+}
+
+/**
+ * For each active channel cell, resolve the actual live video ID asynchronously.
+ * If the channel has multiple streams, this picks the right one and updates the iframe.
+ */
+async function resolveGridVideoIds() {
+  const cells = videoGrid.querySelectorAll('.video-cell');
+  const promises = [];
+
+  cells.forEach((cell) => {
+    if (cell.dataset.videoResolved) return; // already resolved this cell
+    const chId = cell.dataset.channelId;
+    const ch = store.getChannel(chId);
+    if (!ch || !ch.channelId) return;
+
+    cell.dataset.videoResolved = '1';
+    promises.push(
+      checkLiveVideoId(ch.handle, ch.channelId).then((videoId) => {
+        if (!videoId) return;
+        const iframe = cell.querySelector('iframe');
+        if (!iframe) return;
+        const isMuted = !cell.dataset.unmuted;
+        const newUrl = embedVideoUrl(videoId, isMuted);
+        // Only update if the iframe is still using the channel-based fallback
+        if (iframe.src.includes('live_stream?channel=')) {
+          iframe.src = newUrl;
+        }
+      })
+    );
+  });
+
+  await Promise.allSettled(promises);
 }
 
 // ============ Render All ============

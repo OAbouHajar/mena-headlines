@@ -99,6 +99,79 @@ function resolveChannelPlugin() {
 }
 
 /**
+ * Dev-only middleware — /api/check-live
+ * Fetches a YouTube channel's /streams page and extracts live video IDs.
+ */
+function checkLivePlugin() {
+  return {
+    name: 'check-live',
+    configureServer(server) {
+      server.middlewares.use('/api/check-live', async (req, res) => {
+        const url = new URL(req.url, 'http://localhost');
+        const handle = url.searchParams.get('handle') || '';
+        const channelId = url.searchParams.get('channelId') || '';
+
+        if (!handle && !channelId) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Missing handle or channelId parameter' }));
+          return;
+        }
+
+        let streamsUrl;
+        if (handle) {
+          const h = handle.startsWith('@') ? handle : '@' + handle;
+          streamsUrl = `https://www.youtube.com/${h}/streams`;
+        } else {
+          streamsUrl = `https://www.youtube.com/channel/${channelId}/streams`;
+        }
+
+        try {
+          const resp = await fetch(streamsUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept-Language': 'en-US,en;q=0.9',
+            },
+          });
+          const html = await resp.text();
+
+          const videoIds = [];
+          try {
+            const dataMatch = html.match(/var\s+ytInitialData\s*=\s*(\{.+?\});\s*<\/script>/s);
+            if (dataMatch) {
+              const data = JSON.parse(dataMatch[1]);
+              (function walk(node) {
+                if (!node || typeof node !== 'object') return;
+                if (node.videoId && typeof node.videoId === 'string') {
+                  const s = JSON.stringify(node);
+                  if (s.includes('"LIVE"') || s.includes('"style":"LIVE"') || s.includes('"isLive":true')) {
+                    if (!videoIds.includes(node.videoId)) videoIds.push(node.videoId);
+                  }
+                  return;
+                }
+                if (Array.isArray(node)) { node.forEach(walk); return; }
+                for (const k of Object.keys(node)) walk(node[k]);
+              })(data);
+            }
+          } catch {
+            const pat = /"videoId":"([a-zA-Z0-9_-]{11})"[^}]*?"style":"LIVE"/g;
+            let m;
+            while ((m = pat.exec(html)) !== null) {
+              if (!videoIds.includes(m[1])) videoIds.push(m[1]);
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=120' });
+          res.end(JSON.stringify({ videoId: videoIds[0] || '', videoIds }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to fetch streams page', detail: err.message }));
+        }
+      });
+    },
+  };
+}
+
+/**
  * Dev-only middleware — /api/intelligence
  * Fetches RSS feeds server-side, then calls Azure OpenAI using the official SDK.
  */
@@ -1132,7 +1205,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     root: '.',
-    plugins: [presencePlugin(), resolveChannelPlugin(), intelligencePlugin(env), statsPlugin(), flightsPlugin(env), tweetsPlugin(), chatPlugin()],
+    plugins: [presencePlugin(), resolveChannelPlugin(), checkLivePlugin(), intelligencePlugin(env), statsPlugin(), flightsPlugin(env), tweetsPlugin(), chatPlugin()],
     build: {
       outDir: 'dist',
       emptyOutDir: true,
