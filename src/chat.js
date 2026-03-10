@@ -9,11 +9,13 @@ import { t, onLangChange } from './i18n.js';
 // ─── Constants ───────────────────────────────────────────────────────────────
 const POLL_INTERVAL    = 5_000;       // 5 seconds
 
-const AI_USERNAMES    = ['محلل AI إيراني 🤖', 'محلل AI أميركي 🤖', 'محلل AI حيادي 🤖'];
+const AI_USERNAMES    = ['محلل AI إيراني 🤖', 'محلل AI أميركي 🤖', 'محلل AI حيادي 🤖', 'محلل AI سوري 🤖', 'محلل AI خليجي 🤖'];
 const AI_PERSONA_MAP  = {
   'محلل AI إيراني 🤖':  { color: '#e74c3c', cssClass: 'chat-msg-ai-iranian' },
   'محلل AI أميركي 🤖':  { color: '#3498db', cssClass: 'chat-msg-ai-western' },
   'محلل AI حيادي 🤖':   { color: '#9b59b6', cssClass: 'chat-msg-ai-neutral' },
+  'محلل AI سوري 🤖':    { color: '#27ae60', cssClass: 'chat-msg-ai-syrian' },
+  'محلل AI خليجي 🤖':   { color: '#f39c12', cssClass: 'chat-msg-ai-gulf' },
 };
 const STORAGE_KEY      = 'ytmv_chat_username';
 const REACTIONS        = ['👍', '❤️', '😂', '😮', '👎'];

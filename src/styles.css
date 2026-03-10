@@ -503,7 +503,7 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 
 /* ─── Standalone Stats Panel ──────────────────────────── */
 .stats-standalone {
-    width: 272px;
+    width: 389px;
     background: var(--bg-surface);
     border-right: 1px solid var(--border);
     display: flex;
@@ -3785,12 +3785,16 @@ a.news-source-label:hover { filter: brightness(1.2); }
 /* AI message styling — shared */
 .chat-msg-ai-iranian,
 .chat-msg-ai-western,
-.chat-msg-ai-neutral {
+.chat-msg-ai-neutral,
+.chat-msg-ai-syrian,
+.chat-msg-ai-gulf {
     border-radius: var(--radius-sm);
 }
 .chat-msg-ai-iranian .chat-msg-username,
 .chat-msg-ai-western .chat-msg-username,
-.chat-msg-ai-neutral .chat-msg-username {
+.chat-msg-ai-neutral .chat-msg-username,
+.chat-msg-ai-syrian .chat-msg-username,
+.chat-msg-ai-gulf .chat-msg-username {
     font-weight: 800;
 }
 
@@ -3831,6 +3835,32 @@ a.news-source-label:hover { filter: brightness(1.2); }
 }
 .chat-msg-ai-neutral:hover {
     background: rgba(155, 89, 182, 0.10);
+}
+
+/* Syrian AI — green accent */
+.chat-msg-ai-syrian {
+    background: rgba(39, 174, 96, 0.06);
+    border-left: 2px solid rgba(39, 174, 96, 0.4);
+}
+[dir="rtl"] .chat-msg-ai-syrian {
+    border-left: none;
+    border-right: 2px solid rgba(39, 174, 96, 0.4);
+}
+.chat-msg-ai-syrian:hover {
+    background: rgba(39, 174, 96, 0.10);
+}
+
+/* Gulf AI — amber/gold accent */
+.chat-msg-ai-gulf {
+    background: rgba(243, 156, 18, 0.06);
+    border-left: 2px solid rgba(243, 156, 18, 0.4);
+}
+[dir="rtl"] .chat-msg-ai-gulf {
+    border-left: none;
+    border-right: 2px solid rgba(243, 156, 18, 0.4);
+}
+.chat-msg-ai-gulf:hover {
+    background: rgba(243, 156, 18, 0.10);
 }
 
 .chat-msg-header {
