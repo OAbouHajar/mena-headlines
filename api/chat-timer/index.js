@@ -4,7 +4,7 @@
  * Independent of user visits — keeps the chat alive 24/7.
  */
 
-const { AzureOpenAI }       = require('openai');
+const { OpenAI }            = require('openai');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
 const API_KEY     = process.env.AZURE_OPENAI_API_KEY;
@@ -251,10 +251,7 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const client = new AzureOpenAI({
-    apiKey: API_KEY, apiVersion: API_VERSION,
-    endpoint: ENDPOINT, deployment: DEPLOYMENT,
-  });
+  const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
 
   // Build chat context
   const recentChat = msgs.filter(m => !m.isAI).slice(-10)
@@ -291,7 +288,7 @@ module.exports = async function (context, req) {
         { role: 'system', content: persona.prompt },
         { role: 'user',   content: userPrompt },
       ],
-      max_completion_tokens: 4096,
+      max_tokens: 4096,
       reasoning_effort: 'low',
     });
 

@@ -9,7 +9,7 @@
  * Posts colloquial Arabic comments on current news headlines.
  */
 
-const { AzureOpenAI }       = require('openai');
+const { OpenAI }            = require('openai');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
 const API_KEY     = process.env.AZURE_OPENAI_API_KEY;
@@ -158,12 +158,7 @@ module.exports = async function (context, req) {
 
   // Generate AI comment
   try {
-    const client = new AzureOpenAI({
-      apiKey: API_KEY,
-      apiVersion: API_VERSION,
-      endpoint: ENDPOINT,
-      deployment: DEPLOYMENT,
-    });
+    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
 
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
@@ -171,7 +166,7 @@ module.exports = async function (context, req) {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: `هاي آخر الأخبار:\n${headlines.slice(0, 15).join('\n')}\n\nعلّق عليها:` },
       ],
-      max_completion_tokens: 150,
+      max_tokens: 150,
     });
 
     let aiText = (response.choices?.[0]?.message?.content || '').trim();

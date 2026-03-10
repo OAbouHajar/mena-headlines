@@ -370,16 +370,15 @@ confidence_level must be one of: Low, Moderate, High`;
 
           let aiText;
           if (API_KEY && ENDPOINT) {
-            const { AzureOpenAI } = await import('openai');
-            const client = new AzureOpenAI({ apiKey: API_KEY, apiVersion: API_VERSION, endpoint: ENDPOINT, deployment: DEPLOYMENT });
+            const { default: OpenAI } = await import('openai');
+            const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
             const resp = await client.chat.completions.create({
               model: MODEL_NAME,
               messages: [
                 { role: 'system', content: persona.prompt },
                 { role: 'user',   content: userPrompt },
               ],
-              max_completion_tokens: 4096,
-              reasoning_effort: 'low',
+              max_tokens: 4096,
             });
             const choice = resp.choices?.[0];
             console.log(`[intelligence] AI chat (${persona.persona}) finish_reason=${choice?.finish_reason}, content_len=${(choice?.message?.content || '').length}`);
@@ -461,13 +460,8 @@ confidence_level must be one of: Low, Moderate, High`;
       return `${i + 1}. ${title}`;
     }).join('\n');
 
-    const { AzureOpenAI } = await import('openai');
-    const client = new AzureOpenAI({
-      endpoint:   ENDPOINT,
-      apiKey:     API_KEY,
-      deployment: DEPLOYMENT,
-      apiVersion: API_VERSION,
-    });
+    const { default: OpenAI } = await import('openai');
+    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
 
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
@@ -475,8 +469,7 @@ confidence_level must be one of: Low, Moderate, High`;
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.` },
       ],
-      max_completion_tokens: 4096,
-      reasoning_effort: 'low',
+      max_tokens: 4096,
     });
 
     const choice = response.choices?.[0];

@@ -7,7 +7,7 @@
  * - Accepts { lang, historyIndex } — 0=latest, 1=3h ago, 2=6h ago, 3=9h ago
  */
 
-const { AzureOpenAI }       = require('openai');
+const { OpenAI }            = require('openai');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
 const API_KEY     = process.env.AZURE_OPENAI_API_KEY;
@@ -397,10 +397,7 @@ async function postAiChatMessage(headlines) {
     }
     const persona = AI_PERSONAS[personaIdx];
 
-    const client = new AzureOpenAI({
-      apiKey: API_KEY, apiVersion: API_VERSION,
-      endpoint: ENDPOINT, deployment: DEPLOYMENT,
-    });
+    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
 
     // Build chat context from recent non-AI messages
     const recentChat = msgs
@@ -443,8 +440,7 @@ async function postAiChatMessage(headlines) {
           { role: 'system', content: persona.prompt },
           { role: 'user',   content: userPrompt },
         ],
-        max_completion_tokens: 4096,
-        reasoning_effort: 'low',
+        max_tokens: 4096,
       });
 
       let aiText = (response.choices?.[0]?.message?.content || '').trim();
@@ -601,15 +597,14 @@ module.exports = async function (context, req) {
     // Attach raw market/flight snapshot to result for client rendering
     const snapshot = { market, flights };
 
-    const client = new AzureOpenAI({ endpoint: ENDPOINT, apiKey: API_KEY, deployment: DEPLOYMENT, apiVersion: API_VERSION });
+    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: userMessage },
       ],
-      max_completion_tokens: 4096,
-      reasoning_effort: 'low',
+      max_tokens: 4096,
     });
 
     const choice  = response.choices?.[0];
