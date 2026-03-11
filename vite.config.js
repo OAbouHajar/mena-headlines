@@ -1204,12 +1204,126 @@ function chatPlugin() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Predictions Plugin — dev-only mirror of /api/predictions Azure Function
+// Generates one AI yes/no question per day (cached in memory), handles votes.
+// ---------------------------------------------------------------------------
+function predictionsPlugin(env) {
+  const API_KEY  = env.AZURE_OPENAI_API_KEY;
+  const ENDPOINT = env.AZURE_OPENAI_ENDPOINT;
+  const MODEL    = (env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini').trim();
+
+  // In-memory store keyed by lang
+  const store = { ar: null, en: null }; // { period, question, aiPick, aiReason, yesCount, noCount, votes, expiresAt }
+  const votes = { ar: {}, en: {} };     // anonId → 'yes'|'no'
+
+  function todayKey() {
+    const d = new Date();
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  }
+  function tomorrowMidnightUTC() {
+    const d = new Date();
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1)).toISOString();
+  }
+
+  async function generateQuestion(language) {
+    if (!API_KEY || !ENDPOINT) {
+      // Fallback: return a static question when no AI credentials are available
+      return language === 'ar'
+        ? { question: 'هل ستشهد المنطقة تهدئة دبلوماسية خلال الأسبوع القادم؟', aiPick: 'لا', aiReason: 'التوترات الإقليمية لا تزال مرتفعة بدون مسار واضح للحل.' }
+        : { question: 'Will the region see a diplomatic de-escalation in the next week?', aiPick: 'No', aiReason: 'Regional tensions remain elevated with no clear resolution path.' };
+    }
+
+    const prompt = language === 'ar'
+      ? `أنت محلل سياسي متخصص في الشرق الأوسط. اطرح سؤالاً تنبؤياً واحداً بصيغة نعم/لا حول حدث سياسي قائم أو متوقع في المنطقة خلال الأيام القادمة.\nأجب بـ JSON فقط (بدون markdown) بالصيغة:\n{"question":"السؤال","aiPick":"نعم أو لا","aiReason":"جملة واحدة تشرح التوقع"}`
+      : `You are a political analyst specializing in the Middle East. Pose one yes/no predictive question about an ongoing or expected political event in the region within the next few days.\nRespond with JSON only (no markdown):\n{"question":"The question","aiPick":"Yes or No","aiReason":"One sentence explaining the prediction"}`;
+
+    const { default: OpenAI } = await import('openai');
+    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
+    const resp = await client.chat.completions.create({
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 300,
+      temperature: 0.85,
+    });
+    const raw = (resp.choices?.[0]?.message?.content || '').trim();
+    const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/s);
+    return JSON.parse(fenced ? fenced[1].trim() : raw);
+  }
+
+  async function ensureQuestion(language) {
+    const key = todayKey();
+    if (store[language]?.period === key) return store[language];
+    console.log(`[predictions] Generating ${language} question for ${key}...`);
+    try {
+      const { question, aiPick, aiReason } = await generateQuestion(language);
+      store[language] = { period: key, question, aiPick, aiReason, yesCount: 0, noCount: 0, expiresAt: tomorrowMidnightUTC() };
+      votes[language] = {};
+      console.log(`[predictions] ${language} question ready: "${question}"`);
+    } catch (e) {
+      console.warn(`[predictions] generateQuestion(${language}) failed:`, e.message);
+    }
+    return store[language];
+  }
+
+  function sendJSON(res, status, obj) {
+    res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+    res.end(JSON.stringify(obj));
+  }
+
+  return {
+    name: 'predictions',
+    configureServer(server) {
+      // Pre-generate Arabic question on startup (Arabic is default lang)
+      ensureQuestion('ar').catch(() => {});
+
+      server.middlewares.use('/api/predictions', (req, res) => {
+        const url = new URL(req.url, 'http://localhost');
+
+        if (req.method === 'GET') {
+          const language = url.searchParams.get('lang') === 'en' ? 'en' : 'ar';
+          ensureQuestion(language).then((data) => {
+            if (!data) { sendJSON(res, 503, { error: 'Question not yet generated' }); return; }
+            sendJSON(res, 200, data);
+          }).catch(e => sendJSON(res, 500, { error: e.message }));
+          return;
+        }
+
+        if (req.method === 'POST') {
+          let body = '';
+          req.on('data', c => body += c);
+          req.on('end', () => {
+            try {
+              const { anonId, vote, lang: bodyLang = 'ar' } = JSON.parse(body || '{}');
+              const language = bodyLang === 'en' ? 'en' : 'ar';
+              if (!anonId || typeof anonId !== 'string' || anonId.length > 64) { sendJSON(res, 400, { error: 'Invalid anonId' }); return; }
+              if (!['yes', 'no'].includes(vote)) { sendJSON(res, 400, { error: 'vote must be yes or no' }); return; }
+              const data = store[language];
+              if (!data || data.period !== todayKey()) { sendJSON(res, 404, { error: 'No active question' }); return; }
+              if (!votes[language][anonId]) {
+                votes[language][anonId] = vote;
+                data[vote === 'yes' ? 'yesCount' : 'noCount']++;
+              }
+              sendJSON(res, 200, data);
+            } catch (e) {
+              sendJSON(res, 400, { error: 'Bad request' });
+            }
+          });
+          return;
+        }
+
+        sendJSON(res, 405, { error: 'Method not allowed' });
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // Load environment variables for the current mode
   const env = loadEnv(mode, process.cwd(), '');
   return {
     root: '.',
-    plugins: [presencePlugin(), resolveChannelPlugin(), checkLivePlugin(), intelligencePlugin(env), statsPlugin(), flightsPlugin(env), tweetsPlugin(), chatPlugin()],
+    plugins: [presencePlugin(), resolveChannelPlugin(), checkLivePlugin(), intelligencePlugin(env), statsPlugin(), flightsPlugin(env), tweetsPlugin(), chatPlugin(), predictionsPlugin(env)],
     build: {
       outDir: 'dist',
       emptyOutDir: true,

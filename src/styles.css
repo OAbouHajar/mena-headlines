@@ -1607,6 +1607,33 @@ input[type="text"]::placeholder { color: var(--text-muted); }
 .btn-intel:active { transform: scale(0.96); }
 .btn-intel svg { flex-shrink: 0; }
 
+/* ── AI Challenge Button ─────────────────────────────── */
+.btn-pred {
+    background: transparent;
+    color: #d4a843;
+    border: 1px solid rgba(212,168,67,0.35);
+    padding: 5px 12px;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: all 0.18s ease;
+}
+.btn-pred:hover {
+    background: rgba(212,168,67,0.10);
+    border-color: rgba(212,168,67,0.55);
+    color: #e5be62;
+    transform: none;
+    box-shadow: none;
+}
+.btn-pred.active {
+    background: rgba(212,168,67,0.12);
+    border-color: rgba(212,168,67,0.50);
+    color: #e5be62;
+}
+.btn-pred:active { transform: scale(0.96); }
+.btn-pred svg { flex-shrink: 0; }
+
 /* ── Stats Toggle Button ─────────────────────────────── */
 .btn-stats {
     background: transparent;
@@ -4045,6 +4072,297 @@ a.news-source-label:hover { filter: brightness(1.2); }
     transform: scale(1.05);
 }
 .chat-send-btn:active { transform: scale(0.93); }
+
+/* ============================================================
+   AI CHALLENGE — Chat trigger button + popup
+   ============================================================ */
+
+/* Trigger button — full-width strip just above the reply bar */
+.chat-poll-trigger {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    padding: 7px 12px;
+    background: rgba(212,168,67,0.07);
+    border: none;
+    border-top: 1px solid rgba(212,168,67,0.25);
+    color: #d4a843;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: start;
+    transition: background 0.15s;
+}
+.chat-poll-trigger:hover { background: rgba(212,168,67,0.13); }
+.chat-poll-trigger.active { background: rgba(212,168,67,0.15); }
+.chat-poll-trigger svg { flex-shrink: 0; opacity: 0.85; }
+
+.chat-poll-ai-badge {
+    margin-inline-start: auto;
+    background: rgba(212,168,67,0.18);
+    border: 1px solid rgba(212,168,67,0.40);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #e5be62;
+    letter-spacing: 0.04em;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-poll-chevron {
+    opacity: 0.7;
+    transition: transform 0.2s;
+}
+.chat-poll-trigger.active .chat-poll-chevron {
+    transform: rotate(180deg);
+}
+
+/* Popup — flows between messages and trigger button */
+.chat-poll-popup {
+    background: var(--bg-card);
+    border-top: 1px solid rgba(212,168,67,0.28);
+    border-bottom: 1px solid rgba(212,168,67,0.18);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.28s ease;
+}
+.chat-poll-popup.open {
+    max-height: 420px;
+}
+.chat-poll-popup[hidden] { display: none; }
+
+.chat-poll-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px 7px;
+    border-bottom: 1px solid rgba(212,168,67,0.20);
+    flex-shrink: 0;
+}
+.chat-poll-popup-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #d4a843;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.chat-poll-popup-body {
+    overflow-y: auto;
+    padding: 12px;
+    flex: 1;
+}
+
+/* Question text */
+.pred-question {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+/* Expiry badge */
+.pred-expiry {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    margin-bottom: 8px;
+}
+.pred-expiry.expired { color: #e05252; border-color: rgba(224,82,82,0.4); }
+
+/* AI pick strip */
+.pred-ai-pick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: rgba(212,168,67,0.07);
+    border: 1px solid rgba(212,168,67,0.25);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+}
+.pred-ai-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: #d4a843;
+    background: rgba(212,168,67,0.18);
+    border-radius: 4px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+    letter-spacing: 0.04em;
+}
+.pred-ai-answer {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.pred-ai-reason {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    margin-bottom: 10px;
+}
+
+/* Vote buttons */
+.pred-votes {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.pred-vote-btn {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.pred-vote-btn.yes:hover:not(:disabled) { background: rgba(76,175,125,0.12); border-color: rgba(76,175,125,0.45); color: #4caf7d; }
+.pred-vote-btn.no:hover:not(:disabled)  { background: rgba(224,82,82,0.10);  border-color: rgba(224,82,82,0.40);  color: #e05252; }
+.pred-vote-btn.chosen.yes { background: rgba(76,175,125,0.15); border-color: rgba(76,175,125,0.50); color: #4caf7d; }
+.pred-vote-btn.chosen.no  { background: rgba(224,82,82,0.12);  border-color: rgba(224,82,82,0.45);  color: #e05252; }
+.pred-votes.voted .pred-vote-btn { cursor: default; }
+.pred-vote-pct { font-size: 11px; font-weight: 600; opacity: 0.85; }
+
+/* Results progress bar */
+.pred-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+.pred-bar-fill { height: 100%; border-radius: 4px; }
+.pred-bar-fill.yes { background: #4caf7d; }
+.pred-bar-fill.no  { background: #e05252; }
+
+.pred-total-votes {
+    font-size: 10.5px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.pred-no-active {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 16px 0;
+}
+
+/* Action buttons row */
+.pred-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+.pred-expand-btn,
+.pred-share-btn {
+    flex: 1;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-base);
+    color: var(--text-secondary);
+    transition: all 0.15s;
+    text-align: center;
+}
+.pred-expand-btn:hover { background: rgba(78,122,160,0.12); border-color: rgba(78,122,160,0.40); color: var(--accent-light); }
+.pred-share-btn:hover  { background: rgba(212,168,67,0.10); border-color: rgba(212,168,67,0.40); color: #d4a843; }
+
+/* ============================================================
+   AI CHALLENGE — Full slide-over panel (reuses intel-panel base)
+   ============================================================ */
+.pred-panel { z-index: 301; } /* stacks correctly over intel */
+
+.pred-panel-card {
+    padding: 4px 0 16px;
+}
+.pred-panel-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #d4a843;
+    background: rgba(212,168,67,0.12);
+    border: 1px solid rgba(212,168,67,0.35);
+    border-radius: 5px;
+    padding: 3px 9px;
+    margin-bottom: 10px;
+}
+.pred-panel-question {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+.pred-panel-ai-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(212,168,67,0.07);
+    border: 1px solid rgba(212,168,67,0.25);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+}
+.pred-panel-ai-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #d4a843;
+    letter-spacing: 0.04em;
+}
+.pred-panel-ai-answer {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+.pred-panel-reason {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 14px;
+}
+.pred-results-bar {
+    margin-top: 4px;
+    margin-bottom: 10px;
+}
+.pred-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 5px;
+}
+
+/* Ensure chat aside is position:relative so popup anchors to it */
+.chat-standalone { position: relative; }
 
 /* ── Chat responsive ─────────────────────────────────── */
 @media (max-width: 768px) {

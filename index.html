@@ -273,6 +273,23 @@
             <div class="chat-messages" id="chatMessages">
                 <div class="chat-empty" id="chatEmpty" data-i18n="chatEmpty">No messages yet. Start the conversation!</div>
             </div>
+            <!-- AI Challenge popup (sits above trigger button) -->
+            <div class="chat-poll-popup" id="chatPollPopup" hidden>
+                <div class="chat-poll-popup-header">
+                    <span class="chat-poll-popup-title" data-i18n="predPollTitle">Question of the Day</span>
+                    <button class="btn-icon-sm" id="chatPollCloseBtn" title="Close">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="chat-poll-popup-body" id="chatPollBody"></div>
+            </div>
+            <!-- AI Challenge trigger button (above reply bar + input) -->
+            <button class="chat-poll-trigger" id="chatPollTriggerBtn" hidden>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
+                <span data-i18n="predPollTitle">Question of the Day</span>
+                <span class="chat-poll-ai-badge">AI</span>
+                <svg class="chat-poll-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
             <!-- Reply context -->
             <div class="chat-reply-bar" id="chatReplyBar" style="display:none">
                 <span class="chat-reply-text" id="chatReplyText"></span>
@@ -384,6 +401,29 @@
             <div class="intel-empty">
                 <p>Click refresh or wait for analysis to load.</p>
             </div>
+        </div>
+    </aside>
+
+    <!-- Predictions Backdrop -->
+    <div class="intel-backdrop" id="predBackdrop"></div>
+
+    <!-- AI Challenge Slide-Over Panel -->
+    <aside class="intel-panel pred-panel" id="predPanel" role="complementary" aria-label="AI Challenge Panel">
+        <div class="intel-panel-header">
+            <div class="intel-panel-title-group">
+                <div class="intel-panel-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
+                    <span data-i18n="predPanelTitle">AI Challenge</span>
+                </div>
+            </div>
+            <div class="intel-panel-actions">
+                <button class="btn-icon-sm" id="predCloseBtn" title="Close">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="intel-panel-body" id="predBody">
+            <div class="intel-empty"><p>Loading…</p></div>
         </div>
     </aside>
 
