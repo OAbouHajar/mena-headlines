@@ -306,13 +306,13 @@ confidence_level must be one of: Low, Moderate, High`;
   let nextPersonaIdx = 0;       // rotate: 0=iranian, 1=western, 2=neutral, 3=syrian, 4=gulf
   let aiChatInProgress = false;
   let isFirstRun = true;        // inject all 3 on first startup
-  const AI_POST_INTERVAL = 30 * 60 * 1000; // 30 minutes
+  const AI_POST_INTERVAL = 4 * 60 * 60 * 1000; // 4 hours
 
   async function postAiChatDev(headlines, serverPort) {
     try {
       if (aiChatInProgress) return;
       const now = Date.now();
-      // On first run: always post all 3; after that: 1 every 30 min
+      // On first run: always post all 3; after that: 1 every 4 hours
       if (!isFirstRun && (now - lastAiPostTime) < AI_POST_INTERVAL) return;
       aiChatInProgress = true;
 
@@ -434,7 +434,7 @@ confidence_level must be one of: Low, Moderate, High`;
       lastAiPostTime = Date.now();
       if (!isFirstRun) {
         nextPersonaIdx = (nextPersonaIdx + 1) % AI_PERSONAS.length;
-        console.log(`[intelligence] AI chat posted (next: ${AI_PERSONAS[nextPersonaIdx].persona} in 30min)`);
+        console.log(`[intelligence] AI chat posted (next: ${AI_PERSONAS[nextPersonaIdx].persona} in 4h)`);;
       } else {
         console.log(`[intelligence] AI chat injected as starting point (all 3 personas)`);
         isFirstRun = false;
@@ -510,15 +510,15 @@ confidence_level must be one of: Low, Moderate, High`;
       };
       prewarm(); // start immediately
 
-      // Schedule AI chat: every 30 minutes (rotating persona)
+      // Schedule AI chat: every 4 hours (rotating persona)
       setInterval(() => {
         // Trigger an Arabic analysis which will fire postAiChatDev
         runAnalysis('ar').catch(e => console.warn(`[intelligence] Scheduled AR analysis failed:`, e.message));
-      }, 30 * 60 * 1000);
+      }, 4 * 60 * 60 * 1000);
 
       // Also refresh intelligence cache every hour
       setInterval(prewarm, 60 * 60 * 1000);
-      console.log(`[intelligence] AI chat: 1 persona every 30min (rotating), next in ~30min`);
+      console.log(`[intelligence] AI chat: 1 persona every 4h (rotating), next in ~4h`);
 
       server.middlewares.use('/api/intelligence', (req, res) => {
         if (req.method !== 'POST') {

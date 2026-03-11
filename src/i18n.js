@@ -335,7 +335,7 @@ const translations = {
     topStocks: 'أفضل 10 أسهم',
     // Chat
     chat: 'ساحة الحوار',
-    chatSubtitle: '🤖 ٣ محللين AI يتناقشون ويردون كل ٣٠ دقيقة',
+    chatSubtitle: '🤖 ٣ محللين AI يتناقشون ويردون كل ٤ ساعات',
     chatPlaceholder: 'اكتب رسالة…',
     chatSend: 'إرسال',
     chatUsername: 'اختر اسم العرض',
