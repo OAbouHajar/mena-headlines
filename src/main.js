@@ -989,6 +989,7 @@ new NewsTicker();
 initIntelPanel();
 initStatsPanel();
 initChat();
+
 initPredictions();
 
 // On mobile: force all panels closed so only the video grid shows
@@ -998,7 +999,6 @@ if (isMobile()) {
   document.getElementById('flightPanel')?.classList.add('closed');
   document.getElementById('flightBtn')?.classList.remove('active');
   document.getElementById('chatPanel')?.classList.add('closed');
-  document.getElementById('chatPanel')?.classList.remove('mobile-open');
   document.getElementById('chatHeaderBtn')?.classList.remove('active');
 }
 

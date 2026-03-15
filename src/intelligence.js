@@ -5,8 +5,8 @@
 
 import { t, lang, onLangChange } from './i18n.js';
 
-const CACHE_TTL   = 5 * 60_000;    // 5 min client cache for latest report
-const AUTO_REFRESH = 3 * 60 * 60_000; // 3 hours — matches server cache TTL
+const CACHE_TTL   = 60 * 60_000;       // 1 hr client cache (report is daily anyway)
+const AUTO_REFRESH = 24 * 60 * 60_000; // 24 hours — matches daily server schedule
 
 let _historyCaches = {};  // keyed "lang:index" → { data, timestamp }
 let _historyIndex  = 0;   // currently viewing (0 = latest)

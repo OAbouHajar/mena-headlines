@@ -254,7 +254,6 @@
         <aside class="stats-standalone chat-standalone" id="chatPanel" aria-label="Chat Panel">
             <div class="stats-panel-header">
                 <h3 data-i18n="chat">Chat 💬</h3>
-                <p class="chat-subtitle" data-i18n="chatSubtitle">🤖 3 AI analysts share insights every 2 hours</p>
                 <div class="chat-header-actions">
                     <button class="btn-icon-sm" id="chatUsernameBtn" title="Change name">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -273,23 +272,6 @@
             <div class="chat-messages" id="chatMessages">
                 <div class="chat-empty" id="chatEmpty" data-i18n="chatEmpty">No messages yet. Start the conversation!</div>
             </div>
-            <!-- AI Challenge popup (sits above trigger button) -->
-            <div class="chat-poll-popup" id="chatPollPopup" hidden>
-                <div class="chat-poll-popup-header">
-                    <span class="chat-poll-popup-title" data-i18n="predPollTitle">Question of the Day</span>
-                    <button class="btn-icon-sm" id="chatPollCloseBtn" title="Close">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                    </button>
-                </div>
-                <div class="chat-poll-popup-body" id="chatPollBody"></div>
-            </div>
-            <!-- AI Challenge trigger button (above reply bar + input) -->
-            <button class="chat-poll-trigger" id="chatPollTriggerBtn" hidden>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor"/></svg>
-                <span data-i18n="predPollTitle">Question of the Day</span>
-                <span class="chat-poll-ai-badge">AI</span>
-                <svg class="chat-poll-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="18 15 12 9 6 15"/></svg>
-            </button>
             <!-- Reply context -->
             <div class="chat-reply-bar" id="chatReplyBar" style="display:none">
                 <span class="chat-reply-text" id="chatReplyText"></span>
@@ -305,6 +287,7 @@
                 </button>
             </div>
         </aside>
+
     </div>
 
     <!-- Chat FAB (visible when panel is closed) -->
