@@ -200,18 +200,19 @@ module.exports = async function (context, req) {
       }
     }
 
+    const count          = airborne.length;
+    const totalToday     = Math.max(count, _dayAccum.globalSeen.size);
+    const yesterdayTotal = _yesterday.globalTotal;
+
     const countries = _ME_COUNTRIES
       .map(c => ({
         flag: c.flag, ar: c.ar, en: c.en,
         n:              countryCounts[c.ar] || 0,
-        todayTotal:     _dayAccum.bySeen[c.ar]?.size || 0,
+        todayTotal:     Math.max(countryCounts[c.ar] || 0, _dayAccum.bySeen[c.ar]?.size || 0),
         yesterdayTotal: _yesterday.byCountry[c.ar] || 0,
       }))
       .sort((a, b) => b.n - a.n);
 
-    const count          = airborne.length;
-    const totalToday     = _dayAccum.globalSeen.size;
-    const yesterdayTotal = _yesterday.globalTotal;
     const highest = count ? Math.round(Math.max(...airborne.map(s => s[7] || 0))) : 0;
     const fastest = count ? Math.round(Math.max(...airborne.map(s => s[9] || 0)) * 3.6) : 0;
 

@@ -207,7 +207,7 @@ function _renderFlightPanel(data) {
   }
 
   const isAr          = lang() === 'ar';
-  const totalToday     = data.totalToday || data.count;
+  const totalToday     = Math.max(data.count, data.totalToday || 0);
   const yesterdayTotal = data.yesterdayTotal || 0;
   const hasYesterday   = yesterdayTotal > 0;
 
@@ -227,7 +227,7 @@ function _renderFlightPanel(data) {
 
     const rows = data.countries.map(c => {
       const nowN     = c.n;
-      const todayN   = c.todayTotal || 0;
+      const todayN   = Math.max(c.n, c.todayTotal || 0);
       const yestN    = c.yesterdayTotal || 0;
       const primaryN = isYesterday ? yestN : nowN;
       const barW     = primaryN > 0 ? Math.max(4, Math.round(primaryN / maxVal * 100)) : 0;
