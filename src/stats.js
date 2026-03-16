@@ -206,39 +206,92 @@ function _renderFlightPanel(data) {
     return;
   }
 
-  const maxN = (data.countries[0]?.n) || 1;
-  const isAr = lang() === 'ar';
-  const countriesHTML = data.countries.map(c => {
-    const barW = c.n > 0 ? Math.max(4, Math.round(c.n / maxN * 100)) : 0;
-    return `
-      <div class="flight-country-row${c.n === 0 ? ' flt-zero' : ''}">
-        <span class="flight-country-flag">${c.flag}</span>
-        <span class="flight-country-name">${isAr ? c.ar : (c.en || c.ar)}</span>
-        <span class="flight-country-bar-wrap">
-          <span class="flight-country-bar" style="width:${barW}%"></span>
-        </span>
-        <span class="flight-country-count">${c.n > 0 ? c.n : '—'}</span>
+  const isAr          = lang() === 'ar';
+  const totalToday     = data.totalToday || data.count;
+  const yesterdayTotal = data.yesterdayTotal || 0;
+  const hasYesterday   = yesterdayTotal > 0;
+
+  function buildCountryTable(view) {
+    const isYesterday = view === 'yesterday';
+    const maxVal = Math.max(...data.countries.map(c => isYesterday ? (c.yesterdayTotal || 0) : c.n), 1);
+
+    const headerLabel2 = isYesterday ? t('flightYesterday') : t('flightToday');
+    const header = `
+      <div class="flt-table-head">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span class="flt-th flt-th-now">${t('flightNow')}</span>
+        <span class="flt-th flt-th-total">${headerLabel2}</span>
       </div>`;
-  }).join('');
+
+    const rows = data.countries.map(c => {
+      const nowN     = c.n;
+      const todayN   = c.todayTotal || 0;
+      const yestN    = c.yesterdayTotal || 0;
+      const primaryN = isYesterday ? yestN : nowN;
+      const barW     = primaryN > 0 ? Math.max(4, Math.round(primaryN / maxVal * 100)) : 0;
+      const isZero   = isYesterday ? yestN === 0 : nowN === 0;
+      const nowCell   = nowN > 0   ? nowN   : '—';
+      const totalCell = isYesterday
+        ? (yestN > 0 ? yestN : '—')
+        : (todayN > 0 ? todayN : '—');
+      return `
+        <div class="flt-table-row${isZero ? ' flt-zero' : ''}">
+          <span class="flight-country-flag">${c.flag}</span>
+          <span class="flight-country-name">${isAr ? c.ar : (c.en || c.ar)}</span>
+          <span class="flight-country-bar-wrap">
+            <span class="flight-country-bar" style="width:${barW}%"></span>
+          </span>
+          <span class="flt-col-now">${nowCell}</span>
+          <span class="flt-col-total">${totalCell}</span>
+        </div>`;
+    }).join('');
+
+    return header + rows;
+  }
+
+  const tabsHTML = hasYesterday ? `
+    <div class="flight-tabs">
+      <button class="flight-tab active" data-view="today">${t('flightToday')}</button>
+      <button class="flight-tab" data-view="yesterday">${t('flightYesterday')}</button>
+    </div>` : '';
 
   body.innerHTML = `
     <div class="stats-section">
-      <div class="stat-card stat-card-hero-full">
-        <div class="stat-hero-value" style="font-size:2rem">${data.count}</div>
-        <div class="stat-card-label">✈️ ${t('flightActiveCount')}</div>
+      <p class="flight-hero-desc">${t('flightHeroDesc')}</p>
+      <div class="stats-cards-row">
+        <div class="stat-card flight-now-card">
+          <div class="stat-hero-value">${data.count.toLocaleString()}</div>
+          <div class="stat-card-label">✈️ ${t('flightNow')}</div>
+        </div>
+        <div class="stat-card flight-today-card">
+          <div class="stat-hero-value">${totalToday.toLocaleString()}</div>
+          <div class="stat-card-label">📊 ${t('flightToday')}</div>
+        </div>
       </div>
     </div>
     <div class="stats-section">
-      <div class="stats-section-title">${t('flightByCountry')}</div>
-      <div class="flight-countries">${countriesHTML}</div>
-    </div>
-    <div class="stats-section">
-      <div class="stats-cards-row">
-        <!-- Stats removed by request -->
+      <div class="flight-section-header">
+        <span class="stats-section-title" style="margin:0">${t('flightByCountry')}</span>
+        ${tabsHTML}
+      </div>
+      <div class="flight-countries" id="flightCountriesBody">
+        ${buildCountryTable('today')}
       </div>
     </div>
     <div class="flight-update-time">${t('flightLastUpdate')}: ${new Date().toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</div>
   `;
+
+  body.querySelectorAll('.flight-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      body.querySelectorAll('.flight-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const countriesEl = document.getElementById('flightCountriesBody');
+      countriesEl.classList.toggle('flt-hide-now', btn.dataset.view === 'yesterday');
+      countriesEl.innerHTML = buildCountryTable(btn.dataset.view);
+    });
+  });
 }
 
 export function toggleFlightPanel() {

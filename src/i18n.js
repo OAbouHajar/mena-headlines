@@ -153,6 +153,10 @@ const translations = {
     flightActiveCount: 'active flight in region',
     flightLoadError: 'Failed to connect to OpenSky',
     flightDataError: 'Failed to load flight data',
+    flightNow: 'Now',
+    flightToday: 'Today',
+    flightYesterday: 'Yesterday',
+    flightHeroDesc: 'Current flights now ✦ total unique flights today in Middle East airspace',
     // Ticker / Updates
     officialStatements: 'Official Statements',
     loadingFeeds: 'Loading official feeds…',
@@ -342,6 +346,10 @@ const translations = {
     flightActiveCount: 'رحلة نشطة في المنطقة',
     flightLoadError: 'تعذّر الاتصال بـ OpenSky',
     flightDataError: 'تعذّر تحميل بيانات الرحلات',
+    flightNow: 'الآن',
+    flightToday: 'اليوم',
+    flightYesterday: 'أمس',
+    flightHeroDesc: 'الرحلات الحالية الآن ✦ إجمالي الرحلات الفريدة اليوم في أجواء الشرق الأوسط',
     // Ticker / Updates
     officialStatements: 'بيانات رسمية',
     loadingFeeds: 'جاري تحميل البيانات الرسمية…',

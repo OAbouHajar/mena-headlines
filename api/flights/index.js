@@ -30,6 +30,30 @@ const PASSWORD      = process.env.OPENSKY_PASSWORD;
 let _token = null;
 let _tokenExpiry = 0;
 
+// Daily flight accumulator — best-effort (resets on cold start)
+let _dayAccum    = { date: '', globalSeen: new Set(), bySeen: {} };
+let _yesterday   = { date: '', globalTotal: 0, byCountry: {} };
+
+function _getTodayUTC() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function _maybeResetAccum() {
+  const today = _getTodayUTC();
+  if (_dayAccum.date !== today) {
+    if (_dayAccum.date) {
+      _yesterday = {
+        date:        _dayAccum.date,
+        globalTotal: _dayAccum.globalSeen.size,
+        byCountry:   Object.fromEntries(
+          Object.entries(_dayAccum.bySeen).map(([k, v]) => [k, v.size])
+        ),
+      };
+    }
+    _dayAccum = { date: today, globalSeen: new Set(), bySeen: {} };
+  }
+}
+
 async function getOpenSkyToken() {
   if (_token && Date.now() < _tokenExpiry) return _token;
 
@@ -73,6 +97,7 @@ async function fetchAirplanesLive() {
       .filter(a => a.lat != null && a.lon != null && a.alt_baro !== 'ground')
       .map(a => {
         const s = [];
+        s[0] = a.hex || '';
         s[5] = a.lon;
         s[6] = a.lat;
         s[7] = (typeof a.alt_baro === 'number' ? a.alt_baro : 0) * 0.3048;
@@ -96,10 +121,11 @@ async function fetchFlightRadar24() {
   );
   if (!resp.ok) throw new Error('FR24 HTTP ' + resp.status);
   const json = await resp.json();
-  const flights = Object.values(json).filter(v => Array.isArray(v) && typeof v[1] === 'number');
+  const entries = Object.entries(json).filter(([, v]) => Array.isArray(v) && typeof v[1] === 'number');
   return {
-    states: flights.map(f => {
+    states: entries.map(([key, f]) => {
       const s = [];
+      s[0] = f[0] || key;
       s[5] = f[2];
       s[6] = f[1];
       s[7] = (f[4] || 0) * 0.3048;
@@ -157,29 +183,41 @@ module.exports = async function (context, req) {
     const airborne = states.filter(s => s[5] != null && s[6] != null);
     context.log('[flights] airborne: ' + airborne.length);
 
+    _maybeResetAccum();
     const countryCounts = {};
     for (const s of airborne) {
+      const id  = s[0] || `${Math.round(s[5] * 100)}_${Math.round(s[6] * 100)}`;
       const lon = s[5], lat = s[6];
+      _dayAccum.globalSeen.add(id);
       for (const c of _ME_COUNTRIES) {
         const [latMin, latMax, lonMin, lonMax] = c.bbox;
         if (lat >= latMin && lat <= latMax && lon >= lonMin && lon <= lonMax) {
           countryCounts[c.ar] = (countryCounts[c.ar] || 0) + 1;
+          if (!_dayAccum.bySeen[c.ar]) _dayAccum.bySeen[c.ar] = new Set();
+          _dayAccum.bySeen[c.ar].add(id);
           break;
         }
       }
     }
 
     const countries = _ME_COUNTRIES
-      .map(c => ({ flag: c.flag, ar: c.ar, en: c.en, n: countryCounts[c.ar] || 0 }))
+      .map(c => ({
+        flag: c.flag, ar: c.ar, en: c.en,
+        n:              countryCounts[c.ar] || 0,
+        todayTotal:     _dayAccum.bySeen[c.ar]?.size || 0,
+        yesterdayTotal: _yesterday.byCountry[c.ar] || 0,
+      }))
       .sort((a, b) => b.n - a.n);
 
-    const count   = airborne.length;
+    const count          = airborne.length;
+    const totalToday     = _dayAccum.globalSeen.size;
+    const yesterdayTotal = _yesterday.globalTotal;
     const highest = count ? Math.round(Math.max(...airborne.map(s => s[7] || 0))) : 0;
     const fastest = count ? Math.round(Math.max(...airborne.map(s => s[9] || 0)) * 3.6) : 0;
 
     context.res = {
       status: 200,
-      body: JSON.stringify({ count, highest, fastest, countries }),
+      body: JSON.stringify({ count, totalToday, yesterdayTotal, highest, fastest, countries }),
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, s-maxage=300' },
     };
   } catch (err) {
