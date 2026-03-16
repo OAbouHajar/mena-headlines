@@ -26,21 +26,29 @@ export function initStatsPanel() {
   // Flight panel close button
   document.getElementById('flightCloseBtn')?.addEventListener('click', () => toggleFlightPanel());
 
-  // Flight poll timer — only refreshes when panel is open
-  _flightPollTimer = setInterval(() => {
-    const flightPanel = document.getElementById('flightPanel');
-    if (!flightPanel || flightPanel.classList.contains('closed')) return;
-    fetchOpenSky().then(data => {
-      _flightData = data;
-      if (!_flightTimer) _startFlightTicker();
-      else {
-        // Refresh current slide in-place
-        const curSlide = document.getElementById(`hfcSlide${_flightActiveSlot}`);
-        _fillFlightSlide(curSlide, _FLIGHT_ITEMS[_flightIdx]);
-      }
-      _renderFlightPanel(data);
-    }).catch(() => {});
-  }, 120000); // 2 minutes (OpenSky rate limit safe)
+  // Fetch flight data once immediately in the background, then every 60 minutes.
+  // Panel open/close never triggers a fetch — it only renders the cached snapshot.
+  function _fetchFlightBackground() {
+    if (_flightFetching) return;
+    _flightFetching = true;
+    fetchOpenSky()
+      .then(data => {
+        _flightData = data;
+        if (!_flightTimer) _startFlightTicker();
+        else {
+          const curSlide = document.getElementById(`hfcSlide${_flightActiveSlot}`);
+          _fillFlightSlide(curSlide, _FLIGHT_ITEMS[_flightIdx]);
+        }
+        // Re-render only if the panel is currently open
+        const panel = document.getElementById('flightPanel');
+        if (panel && !panel.classList.contains('closed')) _renderFlightPanel(data);
+      })
+      .catch(() => {})
+      .finally(() => { _flightFetching = false; });
+  }
+
+  _fetchFlightBackground();
+  _flightPollTimer = setInterval(_fetchFlightBackground, 3600000); // 60 minutes
 
   onLangChange(() => {
     const panel = document.getElementById('statsPanel');
@@ -165,7 +173,7 @@ let _flightIdx        = 0;
 let _flightTimer      = null;
 let _flightActiveSlot = 'A';
 let _flightPollTimer  = null;
-let _flightLoaded     = false;
+let _flightFetching   = false;
 
 // Middle East countries with flag, Arabic name, and bounding box [latMin,latMax,lonMin,lonMax]
 
@@ -303,21 +311,10 @@ export function toggleFlightPanel() {
   panel.classList.toggle('mobile-open', opening);
   btn?.classList.toggle('active', opening);
   if (opening) {
-    if (!_flightLoaded) {
-      _flightLoaded = true;
-      fetchOpenSky()
-        .then(data => {
-          _flightData = data;
-          if (!_flightTimer) _startFlightTicker();
-          _renderFlightPanel(data);
-        })
-        .catch(() => {
-          const body = document.getElementById('flightBody');
-          if (body) body.innerHTML = `<div class="stats-error">${t('flightLoadError')}</div>`;
-        });
-    } else if (_flightData) {
+    if (_flightData) {
       _renderFlightPanel(_flightData);
     }
+    // else: background fetch is in progress — it will render when it completes
   }
 }
 

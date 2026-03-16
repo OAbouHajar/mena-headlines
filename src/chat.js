@@ -362,15 +362,12 @@ export function initChat() {
     usernameBar.classList.add('hidden');
   }
 
-  // Open by default on desktop, closed on mobile
-  const isMobile = window.matchMedia('(max-width: 768px)').matches;
-  if (isMobile) {
-    isOpen = false;
-    panel.classList.add('closed');
-  } else {
-    isOpen = true;
-    fab?.classList.add('hidden');
-  }
+  // Always start closed — user opens it explicitly via FAB or header button
+  isOpen = false;
+  panel.classList.add('closed');
+  // Show the FAB on desktop (mobile uses the header button instead)
+  fab?.classList.remove('hidden');
+
 
   // Events
   fab?.addEventListener('click', openChat);
