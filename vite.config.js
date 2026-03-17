@@ -6,7 +6,6 @@ import { join } from 'node:path';
 function presencePlugin() {
   const STALE_MS = 90_000;
   const sessions = new Map(); // sid -> { lastSeen, city, country, code }
-  const mockGeo  = { city: 'Dev Machine', country: 'Local', code: null };
 
   function countryFlag(code) {
     if (!code || code.length !== 2) return '🌐';
@@ -21,7 +20,7 @@ function presencePlugin() {
     cleanStale();
     const groups = new Map();
     for (const { city, country, code } of sessions.values()) {
-      const key = `${code || '??'}:${city}`;
+      const key = code ? `${code}:${city}` : '??:?';
       if (!groups.has(key)) groups.set(key, { flag: countryFlag(code), city, country, count: 0 });
       groups.get(key).count++;
     }
@@ -33,13 +32,16 @@ function presencePlugin() {
     configureServer(server) {
       server.middlewares.use('/api/presence', (req, res) => {
         const url = new URL(req.url, 'http://localhost');
-        const sid = url.searchParams.get('sid');
+        const sid     = url.searchParams.get('sid');
+        const city    = url.searchParams.get('city')    || 'Local';
+        const country = url.searchParams.get('country') || 'Local';
+        const code    = url.searchParams.get('code')    || null;
         const send = (obj) => {
           res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
           res.end(JSON.stringify(obj));
         };
         if (req.method === 'POST') {
-          if (sid) sessions.set(sid, { lastSeen: Date.now(), ...mockGeo });
+          if (sid) sessions.set(sid, { lastSeen: Date.now(), city, country, code });
           send({ count: liveCount(), locations: buildLocations() });
         } else if (req.method === 'DELETE') {
           if (sid) sessions.delete(sid);

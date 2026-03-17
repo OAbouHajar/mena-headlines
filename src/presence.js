@@ -1,24 +1,48 @@
 /**
  * Presence tracking — in-memory counter via Azure Function /api/presence.
  * Each session sends a POST heartbeat every 30 s.
- * The server counts sessions active within the last 90 s and returns the total.
- * No external database required.
+ * Geo lookup is done CLIENT-SIDE (browser → ipwho.is) to avoid Azure
+ * datacenter IP blocks on free geo APIs.
  */
 
 const HEARTBEAT_MS = 30_000;  // POST to keep session alive
 const POLL_MS      = 10_000;  // GET to refresh count shown in badge
 
-let _sessionId     = null;
+let _sessionId = null;
 let _heartbeatTimer = null;
 let _pollTimer      = null;
+let _geo = null; // { city, country, code } resolved once per session
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }
 
-async function apiPost(sid) {
+/** Resolve this browser's own location. Cached in sessionStorage. */
+async function selfGeo() {
+  const cached = sessionStorage.getItem('_presence_geo');
+  if (cached) { try { return JSON.parse(cached); } catch {} }
   try {
-    const r = await fetch(`/api/presence?sid=${sid}`, { method: 'POST' });
+    const ac  = new AbortController();
+    const tid = setTimeout(() => ac.abort(), 5000);
+    const r   = await fetch('https://ipwho.is/', { signal: ac.signal });
+    clearTimeout(tid);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d.success) return null;
+    const geo = { city: d.city || null, country: d.country || null, code: d.country_code || null };
+    sessionStorage.setItem('_presence_geo', JSON.stringify(geo));
+    return geo;
+  } catch {
+    return null;
+  }
+}
+
+async function apiPost(sid, geo) {
+  try {
+    const geoQ = geo
+      ? `&city=${encodeURIComponent(geo.city || '')}&country=${encodeURIComponent(geo.country || '')}&code=${encodeURIComponent(geo.code || '')}`
+      : '';
+    const r = await fetch(`/api/presence?sid=${sid}${geoQ}`, { method: 'POST' });
     if (!r.ok) return null;
     return await r.json(); // { count, locations }
   } catch { return null; }
@@ -52,13 +76,16 @@ export async function initPresence(onCountChange) {
 
   _sessionId = generateId();
 
+  // Resolve geo once (client-side, browser → ipwho.is — avoids datacenter IP blocks)
+  selfGeo().then(g => { _geo = g; });
+
   // Register this session and get initial count + locations
-  const initial = await apiPost(_sessionId);
+  const initial = await apiPost(_sessionId, _geo);
   notify(initial ?? { count: 1, locations: [] });
 
   // Keep session alive
   _heartbeatTimer = setInterval(async () => {
-    notify(await apiPost(_sessionId));
+    notify(await apiPost(_sessionId, _geo));
   }, HEARTBEAT_MS);
 
   // Poll for count updates (other users joining/leaving)
@@ -69,7 +96,7 @@ export async function initPresence(onCountChange) {
   // Refresh when tab becomes visible after being hidden
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible') {
-      notify(await apiPost(_sessionId));
+      notify(await apiPost(_sessionId, _geo));
     }
   });
 
