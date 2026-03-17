@@ -5,12 +5,28 @@ import { join } from 'node:path';
 // ── Presence Plugin — dev mirror of /api/presence Azure Function ──────────────
 function presencePlugin() {
   const STALE_MS = 90_000;
-  const sessions = new Map();
+  const sessions = new Map(); // sid -> { lastSeen, city, country, code }
+  const mockGeo  = { city: 'Dev Machine', country: 'Local', code: null };
+
+  function countryFlag(code) {
+    if (!code || code.length !== 2) return '🌐';
+    return [...code.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('');
+  }
   function cleanStale() {
     const now = Date.now();
-    for (const [id, ts] of sessions) if (now - ts > STALE_MS) sessions.delete(id);
+    for (const [id, d] of sessions) if (now - d.lastSeen > STALE_MS) sessions.delete(id);
   }
   function liveCount() { cleanStale(); return Math.max(1, sessions.size); }
+  function buildLocations() {
+    cleanStale();
+    const groups = new Map();
+    for (const { city, country, code } of sessions.values()) {
+      const key = `${code || '??'}:${city}`;
+      if (!groups.has(key)) groups.set(key, { flag: countryFlag(code), city, country, count: 0 });
+      groups.get(key).count++;
+    }
+    return [...groups.values()].sort((a, b) => b.count - a.count);
+  }
 
   return {
     name: 'presence',
@@ -23,13 +39,13 @@ function presencePlugin() {
           res.end(JSON.stringify(obj));
         };
         if (req.method === 'POST') {
-          if (sid) sessions.set(sid, Date.now());
-          send({ count: liveCount() });
+          if (sid) sessions.set(sid, { lastSeen: Date.now(), ...mockGeo });
+          send({ count: liveCount(), locations: buildLocations() });
         } else if (req.method === 'DELETE') {
           if (sid) sessions.delete(sid);
-          send({ count: liveCount() });
+          send({ count: liveCount(), locations: buildLocations() });
         } else {
-          send({ count: liveCount() });
+          send({ count: liveCount(), locations: buildLocations() });
         }
       });
     },

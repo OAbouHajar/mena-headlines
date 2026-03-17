@@ -20,7 +20,7 @@ async function apiPost(sid) {
   try {
     const r = await fetch(`/api/presence?sid=${sid}`, { method: 'POST' });
     if (!r.ok) return null;
-    return (await r.json()).count;
+    return await r.json(); // { count, locations }
   } catch { return null; }
 }
 
@@ -34,28 +34,31 @@ async function apiGet() {
   try {
     const r = await fetch('/api/presence');
     if (!r.ok) return null;
-    return (await r.json()).count;
+    return await r.json(); // { count, locations }
   } catch { return null; }
 }
 
 /**
  * Start presence tracking.
- * @param {(count: number) => void} onCountChange  Called whenever count changes.
+ * @param {(count: number, locations: Array) => void} onCountChange  Called whenever count/locations change.
  * @returns {() => void}  Cleanup function.
  */
 export async function initPresence(onCountChange) {
-  const notify = (n) => { if (n != null && typeof onCountChange === 'function') onCountChange(n); };
+  const notify = (data) => {
+    if (data != null && typeof onCountChange === 'function') {
+      onCountChange(data.count ?? 1, data.locations ?? []);
+    }
+  };
 
   _sessionId = generateId();
 
-  // Register this session and get initial count
+  // Register this session and get initial count + locations
   const initial = await apiPost(_sessionId);
-  notify(initial ?? 1);
+  notify(initial ?? { count: 1, locations: [] });
 
   // Keep session alive
   _heartbeatTimer = setInterval(async () => {
-    const n = await apiPost(_sessionId);
-    notify(n);
+    notify(await apiPost(_sessionId));
   }, HEARTBEAT_MS);
 
   // Poll for count updates (other users joining/leaving)

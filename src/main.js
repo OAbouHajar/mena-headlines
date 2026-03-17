@@ -1010,9 +1010,27 @@ if (isMobile()) {
 
 // ============ Live Users Counter ============
 (function () {
-  const countEl = $('#liveUsersCount');
-  initPresence((count) => {
+  const countEl    = $('#liveUsersCount');
+  const dropdownEl = document.getElementById('presenceDropdown');
+
+  function renderPresenceDropdown(locations) {
+    if (!dropdownEl) return;
+    if (!locations || locations.length === 0) {
+      dropdownEl.innerHTML = '<div class="pd-row pd-empty">No location data</div>';
+      return;
+    }
+    dropdownEl.innerHTML = locations.map(loc =>
+      `<div class="pd-row">
+        <span class="pd-flag">${loc.flag}</span>
+        <span class="pd-place">${loc.city}, ${loc.country}</span>
+        <span class="pd-count">${loc.count}</span>
+      </div>`
+    ).join('');
+  }
+
+  initPresence((count, locations) => {
     if (countEl) countEl.textContent = count;
+    renderPresenceDropdown(locations);
   });
 })();
 
