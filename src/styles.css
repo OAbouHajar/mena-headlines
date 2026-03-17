@@ -187,6 +187,7 @@ h1, h2, h3, h4, h5, h6 {
     height: 100%;
     display: flex;
     align-items: center;
+    cursor: pointer;
 }
 .hpc-slide {
     position: absolute;
@@ -1801,6 +1802,7 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     height: 100%;
     display: flex;
     align-items: center;
+    cursor: pointer;
 }
 
 /* ── Flight Panel body ── */

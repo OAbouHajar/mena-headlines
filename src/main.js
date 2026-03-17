@@ -759,7 +759,9 @@ if (isMobile()) {
   sidebar.classList.add('collapsed');
 }
 $('#statsBtn').addEventListener('click', () => toggleStatsPanel());
+$('#headerPriceTicker').addEventListener('click', () => toggleStatsPanel());
 $('#flightBtn').addEventListener('click', () => toggleFlightPanel());
+$('#headerFlightTicker').addEventListener('click', () => toggleFlightPanel());
 $('#addChannelBtn').addEventListener('click', () => openModal());
 $('#addChannelBtnBottom').addEventListener('click', () => openModal());
 $('#intelBtn').addEventListener('click', () => openIntelPanel());
