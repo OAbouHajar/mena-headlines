@@ -249,7 +249,7 @@ function _renderFlightPanel(data) {
       const yestN    = c.yesterdayTotal || 0;
       const primaryN = isYesterday ? yestN : nowN;
       const barW     = primaryN > 0 ? Math.max(4, Math.round(primaryN / maxVal * 100)) : 0;
-      const isZero   = isYesterday ? yestN === 0 : nowN === 0;
+      const isZero   = isYesterday ? yestN === 0 : (nowN === 0 && todayN === 0);
       const nowCell   = nowN > 0   ? nowN   : '—';
       const totalCell = isYesterday
         ? (yestN > 0 ? yestN : '—')

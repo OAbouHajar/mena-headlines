@@ -242,7 +242,19 @@ h1, h2, h3, h4, h5, h6 {
 .hpc-change.down { color: #c94040; }
 
 @media (max-width: 900px) {
-    .header-price-bar { display: none; }
+    .header-price-ticker,
+    .header-flight-ticker,
+    .header-ticker-divider { display: none; }
+    .ticker-toggle-btn {
+        align-self: center;
+        height: 30px;
+        border-radius: var(--radius-sm);
+        border: 1px solid;
+        padding: 0 9px;
+    }
+    .ticker-toggle-btn.btn-stats  { border-color: rgba(76,175,125,0.35); }
+    .ticker-toggle-btn.btn-flight { border-color: rgba(78,168,222,0.35); }
+    .ticker-toggle-label { display: none; }
 }
 
 /* Hide button text labels in header controls when viewport is tight */
