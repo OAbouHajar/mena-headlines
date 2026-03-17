@@ -81,10 +81,10 @@ export function toggleStatsPanel() {
 // ---------------------------------------------------------------------------
 
 const _TICKER_ITEMS = [
-  { id: 'oil',    label: '🛢 WTI',    unit: '$/bbl'   },
-  { id: 'gold',   label: '🥇 Gold',   unit: '$/oz'    },
-  { id: 'brent',  label: '⛽ Brent',  unit: '$/bbl'   },
-  { id: 'natgas', label: '🔥 NatGas', unit: '$/MMBtu' },
+  { id: 'oil',    label: () => `🛢 ${t('statsOil')}`,    unit: '$/bbl'   },
+  { id: 'gold',   label: () => `🥇 ${t('statsGold')}`,   unit: '$/oz'    },
+  { id: 'brent',  label: () => `⛽ ${t('statsBrent')}`,  unit: '$/bbl'   },
+  { id: 'natgas', label: () => `🔥 ${t('statsNatGas')}`, unit: '$/MMBtu' },
 ];
 let _tickerData   = {};   // keyed by item.id
 let _tickerIdx    = 0;
@@ -117,7 +117,7 @@ function _fillSlide(el, item) {
   const labelEl  = el.querySelector('.hpc-label');
   const priceEl  = el.querySelector('.hpc-price');
   const changeEl = el.querySelector('.hpc-change');
-  if (labelEl)  labelEl.textContent = item.label;
+  if (labelEl)  labelEl.textContent = typeof item.label === 'function' ? item.label() : item.label;
   if (!priceData) {
     if (priceEl)  priceEl.textContent  = '—';
     if (changeEl) { changeEl.textContent = ''; changeEl.className = 'hpc-change'; }

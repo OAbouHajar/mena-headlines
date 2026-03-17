@@ -178,6 +178,7 @@ h1, h2, h3, h4, h5, h6 {
     border-left: 1px solid var(--border-light);
     border-right: 1px solid var(--border-light);
     flex-shrink: 0;
+    direction: ltr; /* keep buttons on visual-left regardless of RTL page */
 }
 .header-price-ticker {
     position: relative;
@@ -1719,6 +1720,80 @@ input[type="text"]::placeholder { color: var(--text-muted); }
     flex-shrink: 0;
     margin: 6px 0;
 }
+
+/* ── Ticker-embedded toggle buttons (stats & flight) ── */
+.ticker-toggle-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    opacity: 0.7;
+    white-space: nowrap;
+    direction: rtl;
+    margin-top: 2px;
+}
+.ticker-toggle-btn {
+    padding: 0 8px;
+    width: auto;
+    align-self: stretch;
+    border-radius: 0;
+    border-top: none;
+    border-bottom: none;
+    border-left: none;
+    flex-shrink: 0;
+    flex-direction: column;
+    gap: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+}
+/* coloured left-edge accent so it reads as a clickable tab */
+.ticker-toggle-btn::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 2px;
+    border-radius: 2px;
+    opacity: 0.5;
+}
+.ticker-toggle-btn.btn-stats {
+    border-right: 1px solid rgba(76,175,125,0.35);
+    background: rgba(76,175,125,0.07);
+    color: #4caf7d;
+}
+.ticker-toggle-btn.btn-stats::before { background: #4caf7d; }
+.ticker-toggle-btn.btn-stats:hover {
+    background: rgba(76,175,125,0.15);
+    color: #6fcf97;
+    box-shadow: inset 0 0 0 1px rgba(76,175,125,0.30);
+}
+.ticker-toggle-btn.btn-stats.active {
+    background: rgba(76,175,125,0.18);
+    color: #6fcf97;
+    border-right-color: rgba(76,175,125,0.55);
+}
+.ticker-toggle-btn.btn-stats.active::before { opacity: 1; }
+.ticker-toggle-btn.btn-flight {
+    border-right: 1px solid rgba(78,168,222,0.35);
+    background: rgba(78,168,222,0.07);
+    color: #4ea8de;
+}
+.ticker-toggle-btn.btn-flight::before { background: #4ea8de; }
+.ticker-toggle-btn.btn-flight:hover {
+    background: rgba(78,168,222,0.15);
+    color: #74c0e8;
+    box-shadow: inset 0 0 0 1px rgba(78,168,222,0.30);
+}
+.ticker-toggle-btn.btn-flight.active {
+    background: rgba(78,168,222,0.18);
+    color: #74c0e8;
+    border-right-color: rgba(78,168,222,0.55);
+}
+.ticker-toggle-btn.btn-flight.active::before { opacity: 1; }
 .header-flight-ticker {
     position: relative;
     overflow: hidden;
