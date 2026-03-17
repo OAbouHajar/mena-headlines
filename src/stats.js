@@ -4,9 +4,16 @@ const POLL_MS = 600000; // 10 minutes
 
 let _pollTimer = null;
 let _headerTimer = null;
-let _map = null;
-let _markers = [];
 let _statsLoaded = false;
+
+// ---------------------------------------------------------------------------
+// Commodity price chart state
+// ---------------------------------------------------------------------------
+
+let _chart = null;
+let _chartData = null;
+let _chartFetched = false;  // true once a successful fetch has been made
+let _chartVisible = { oil: true, gold: true, brent: true, natgas: true };
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -70,8 +77,7 @@ export function toggleStatsPanel() {
       loadStats();
       _pollTimer = setInterval(loadStats, POLL_MS);
     }
-    // Panel just opened — invalidate map size after transition
-    setTimeout(() => _map?.invalidateSize(), 350);
+    if (!_chartFetched) loadCommodityChart();
   }
 }
 
@@ -414,8 +420,6 @@ function renderStats(container, data) {
 
   `;
 
-  // Plot active conflict zones on the Leaflet map
-  initMap();
 }
 
 function priceCard(labelKey, icon, priceData, unit) {
@@ -447,71 +451,127 @@ function heroCard(labelKey, value, available) {
 }
 
 // ---------------------------------------------------------------------------
-// Leaflet map (conflict / disaster markers)
+// Commodity history chart
 // ---------------------------------------------------------------------------
 
-// Active conflict zones — hardcoded known ongoing conflicts with coordinates
-const CONFLICT_ZONES = [
-  { nameAr: 'غزة / فلسطين', nameEn: 'Gaza / Palestine', lat: 31.35, lon: 34.31, level: 'red' },
-  { nameAr: 'الضفة الغربية', nameEn: 'West Bank', lat: 31.95, lon: 35.30, level: 'red' },
-  { nameAr: 'أوكرانيا', nameEn: 'Ukraine', lat: 48.38, lon: 31.17, level: 'red' },
-  { nameAr: 'اليمن', nameEn: 'Yemen', lat: 15.55, lon: 48.52, level: 'red' },
-  { nameAr: 'السودان', nameEn: 'Sudan', lat: 15.50, lon: 32.56, level: 'red' },
-  { nameAr: 'سوريا', nameEn: 'Syria', lat: 34.80, lon: 38.99, level: 'orange' },
-  { nameAr: 'لبنان', nameEn: 'Lebanon', lat: 33.85, lon: 35.86, level: 'orange' },
-  { nameAr: 'ميانمار', nameEn: 'Myanmar', lat: 19.76, lon: 96.08, level: 'orange' },
-  { nameAr: 'الكونغو', nameEn: 'DR Congo', lat: -4.04, lon: 21.76, level: 'orange' },
-  { nameAr: 'الصومال', nameEn: 'Somalia', lat: 5.15, lon: 46.20, level: 'orange' },
-  { nameAr: 'الساحل', nameEn: 'Sahel / Mali', lat: 17.57, lon: -3.99, level: 'orange' },
-  { nameAr: 'إثيوبيا', nameEn: 'Ethiopia', lat: 9.15, lon: 40.49, level: 'orange' },
-  { nameAr: 'هايتي', nameEn: 'Haiti', lat: 18.97, lon: -72.29, level: 'orange' },
-  { nameAr: 'ليبيا', nameEn: 'Libya', lat: 26.34, lon: 17.23, level: 'green' },
+const _CHART_COMMODITIES = [
+  { id: 'oil',    icon: '🛢', labelKey: 'statsOil',    unit: '$/bbl',   color: '#4e9cd4' },
+  { id: 'gold',   icon: '🥇', labelKey: 'statsGold',   unit: '$/oz',    color: '#e8c54a' },
+  { id: 'brent',  icon: '⛽', labelKey: 'statsBrent',  unit: '$/bbl',   color: '#e07b38' },
+  { id: 'natgas', icon: '🔥', labelKey: 'statsNatGas', unit: '$/MMBtu', color: '#4caf7d' },
 ];
 
-function initMap() {
-  const el = document.getElementById('statsConflictMap');
-  if (!el) return;
+async function loadCommodityChart() {
+  const canvas = document.getElementById('priceHistoryCanvas');
+  if (!canvas) return;
+  try {
+    const resp = await fetch('/api/commodity-history');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    _chartData = await resp.json();
+    _chartFetched = true;
+    _renderChartToggles();
+    _renderPriceChart();
+  } catch (err) {
+    console.error('[commodity-chart]', err);
+    const area = document.querySelector('.price-chart-area');
+    if (area) area.innerHTML = `<div class="stats-error">${t('priceChartError')}</div>`;
+  }
+}
 
-  // Remove old markers
-  _markers.forEach((m) => m && m.remove ? m.remove() : null);
-  _markers = [];
+function _formatChartDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  return d.toLocaleDateString(lang() === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' });
+}
 
-  // Init map once
-  if (!_map) {
-    if (!window.L) return; // Leaflet not loaded
-    _map = window.L.map(el, {
-      center: [20, 20],
-      zoom: 2,
-      scrollWheelZoom: false,
-      attributionControl: false,
-      zoomControl: false,
+function _renderPriceChart() {
+  const canvas = document.getElementById('priceHistoryCanvas');
+  if (!canvas || !_chartData || !window.Chart) return;
+
+  // Collect dates from the longest series
+  const base = _chartData.oil?.length ? _chartData.oil : (_chartData.gold || []);
+  const labels = base.map(p => _formatChartDate(p.date));
+
+  const datasets = _CHART_COMMODITIES.map(c => ({
+    label: `${c.icon} ${t(c.labelKey)} (${c.unit})`,
+    data: (_chartData[c.id] || []).map(p => p.close),
+    borderColor: c.color,
+    backgroundColor: c.color + '22',
+    borderWidth: 2,
+    pointRadius: 3,
+    pointHoverRadius: 5,
+    tension: 0.35,
+    fill: false,
+    hidden: !_chartVisible[c.id],
+    yAxisID: (c.id === 'natgas') ? 'yRight' : 'y',
+  }));
+
+  if (_chart) {
+    _chart.data.labels = labels;
+    _chart.data.datasets = datasets;
+    _chart.update();
+    return;
+  }
+
+  _chart = new window.Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a1a',
+          borderColor: '#333',
+          borderWidth: 1,
+          titleColor: '#ccc',
+          bodyColor: '#eee',
+          padding: 10,
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#888', font: { size: 11 } },
+          grid: { color: '#2a2a2a' },
+        },
+        y: {
+          position: 'left',
+          ticks: { color: '#888', font: { size: 11 } },
+          grid: { color: '#2a2a2a' },
+        },
+        yRight: {
+          position: 'right',
+          ticks: { color: '#4caf7d', font: { size: 11 } },
+          grid: { drawOnChartArea: false },
+        },
+      },
+    },
+  });
+}
+
+function _renderChartToggles() {
+  const wrap = document.getElementById('priceChartToggles');
+  if (!wrap) return;
+  wrap.innerHTML = _CHART_COMMODITIES.map(c => `
+    <button class="pct-btn${_chartVisible[c.id] ? ' active' : ''}" data-id="${c.id}" style="--dot:${c.color}">
+      ${c.icon} ${t(c.labelKey)}
+    </button>`).join('');
+  wrap.querySelectorAll('.pct-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      _chartVisible[id] = !_chartVisible[id];
+      btn.classList.toggle('active', _chartVisible[id]);
+      if (_chart) {
+        const meta = _CHART_COMMODITIES.find(c => c.id === id);
+        const dsIdx = _CHART_COMMODITIES.indexOf(meta);
+        if (_chart.data.datasets[dsIdx]) {
+          _chart.data.datasets[dsIdx].hidden = !_chartVisible[id];
+          _chart.update();
+        }
+      }
     });
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 18,
-      crossOrigin: true,
-    }).addTo(_map);
-    setTimeout(() => _map.invalidateSize(), 250);
-    setTimeout(() => _map.invalidateSize(), 800);
-  } else {
-    setTimeout(() => _map.invalidateSize(), 100);
-  }
-
-  const isAr = lang() === 'ar';
-  const colorMap = { red: '#c94040', orange: '#e8a838', green: '#4caf7d' };
-  for (const z of CONFLICT_ZONES) {
-    const color  = colorMap[z.level] || '#4caf7d';
-    const radius = z.level === 'red' ? 8 : z.level === 'orange' ? 6 : 4;
-    const label  = isAr ? z.nameAr : z.nameEn;
-    const marker = window.L.circleMarker([z.lat, z.lon], {
-      radius,
-      color,
-      fillColor: color,
-      fillOpacity: 0.80,
-      weight: 1.5,
-    }).bindTooltip(label, { direction: 'top', className: 'gdacs-tooltip' });
-    marker.addTo(_map);
-    _markers.push(marker);
-  }
+  });
 }
 
 // ---------------------------------------------------------------------------

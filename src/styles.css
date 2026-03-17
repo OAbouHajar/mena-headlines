@@ -2546,69 +2546,73 @@ body.intel-open { overflow: hidden; }
    Stats Panel
    ========================================================================== */
 
-/* Leaflet conflict map */
-.stats-map {
+/* 7-day commodity price chart */
+.price-chart-area {
     width: 100%;
-    height: 190px;
-    background: #0e1217;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    position: relative;
-    overflow: hidden;
-}
-
-/* Map colour legend */
-.stats-map-legend {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 7px 14px;
+    padding: 10px 14px 8px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-surface);
     flex-shrink: 0;
+    box-sizing: border-box;
 }
-.map-legend-item {
+.price-chart-header {
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
 }
-.map-legend-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    opacity: 0.9;
-}
-.map-legend-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: #b0c8e0;
-    letter-spacing: 0.04em;
-}
-.map-legend-sep {
-    width: 1px;
-    height: 12px;
-    background: var(--border);
-    margin: 0 10px;
-    flex-shrink: 0;
-}
-
-/* Leaflet dark-mode overrides */
-.leaflet-container {
-    background: #0e1217;
-    font-family: inherit;
-}
-.leaflet-tile-pane { filter: brightness(0.85) contrast(1.05); }
-.gdacs-tooltip {
-    background: rgba(14,18,23,0.93);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
+.price-chart-title {
     font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #888;
 }
-.gdacs-tooltip::before { display: none; }
+.price-chart-toggles {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.pct-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: #666;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    white-space: nowrap;
+}
+.pct-btn::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dot, #888);
+    flex-shrink: 0;
+}
+.pct-btn.active {
+    border-color: var(--dot, #888);
+    color: #ddd;
+    background: color-mix(in srgb, var(--dot, #888) 12%, transparent);
+}
+.pct-btn:hover {
+    border-color: var(--dot, #888);
+    color: #ccc;
+}
+#priceHistoryCanvas {
+    width: 100% !important;
+    max-height: 185px;
+    display: block;
+}
 
 /* Body scrollable area */
 .stats-body {

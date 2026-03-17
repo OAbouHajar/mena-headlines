@@ -1318,12 +1318,67 @@ function predictionsPlugin(env) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Commodity History Plugin — dev-only mirror of /api/commodity-history
+// ---------------------------------------------------------------------------
+function commodityHistoryPlugin() {
+  let _cache = null;
+  let _cacheTime = 0;
+  const CACHE_TTL = 2 * 60 * 60 * 1000; // 2h — daily bars are stable
+
+  const SYMBOLS = { oil: 'CL=F', gold: 'GC=F', brent: 'BZ=F', natgas: 'NG=F' };
+
+  async function fetchHistory(symbol) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=7d`;
+      const resp = await fetch(url, { headers: { 'User-Agent': 'yt-multi-player/1.0' } });
+      const json = await resp.json();
+      const result = json?.chart?.result?.[0];
+      if (!result) return [];
+      const timestamps = result.timestamp || [];
+      const closes = result.indicators?.quote?.[0]?.close || [];
+      const points = [];
+      for (let i = 0; i < timestamps.length; i++) {
+        const close = closes[i];
+        if (close == null || isNaN(close)) continue;
+        const date = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
+        points.push({ date, close: +close.toFixed(2) });
+      }
+      return points;
+    } catch { return []; }
+  }
+
+  return {
+    name: 'commodity-history',
+    configureServer(server) {
+      server.middlewares.use('/api/commodity-history', async (req, res) => {
+        if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
+        try {
+          const now = Date.now();
+          if (!_cache || now - _cacheTime > CACHE_TTL) {
+            const [oil, gold, brent, natgas] = await Promise.all(
+              Object.values(SYMBOLS).map(s => fetchHistory(s))
+            );
+            _cache = { ts: new Date().toISOString(), oil, gold, brent, natgas };
+            _cacheTime = now;
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(_cache));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // Load environment variables for the current mode
   const env = loadEnv(mode, process.cwd(), '');
   return {
     root: '.',
-    plugins: [presencePlugin(), resolveChannelPlugin(), checkLivePlugin(), intelligencePlugin(env), statsPlugin(), flightsPlugin(env), tweetsPlugin(), chatPlugin(), predictionsPlugin(env)],
+    plugins: [presencePlugin(), resolveChannelPlugin(), checkLivePlugin(), intelligencePlugin(env), statsPlugin(), commodityHistoryPlugin(), flightsPlugin(env), tweetsPlugin(), chatPlugin(), predictionsPlugin(env)],
     build: {
       outDir: 'dist',
       emptyOutDir: true,

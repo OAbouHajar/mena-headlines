@@ -9,6 +9,8 @@
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" crossorigin=""></script>
 
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9893338884955073"
@@ -209,24 +211,13 @@
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
             </div>
-            <!-- Conflict map -->
-            <div id="statsConflictMap" class="stats-map"></div>
-            <!-- Map legend -->
-            <div class="stats-map-legend">
-                <span class="map-legend-item">
-                    <span class="map-legend-dot" style="background:#c94040"></span>
-                    <span class="map-legend-label" data-i18n="statsAlertRed">حرجة</span>
-                </span>
-                <span class="map-legend-sep"></span>
-                <span class="map-legend-item">
-                    <span class="map-legend-dot" style="background:#e8a838"></span>
-                    <span class="map-legend-label" data-i18n="statsAlertOrange">تصعيد</span>
-                </span>
-                <span class="map-legend-sep"></span>
-                <span class="map-legend-item">
-                    <span class="map-legend-dot" style="background:#4caf7d"></span>
-                    <span class="map-legend-label" data-i18n="statsAlertGreen">مراقبة</span>
-                </span>
+            <!-- 7-day commodity price chart -->
+            <div class="price-chart-area">
+                <div class="price-chart-header">
+                    <span class="price-chart-title" data-i18n="priceChartTitle">7-Day Price History</span>
+                    <div class="price-chart-toggles" id="priceChartToggles"></div>
+                </div>
+                <canvas id="priceHistoryCanvas"></canvas>
             </div>
             <!-- Scrollable widgets -->
             <div class="stats-body" id="statsBody">
