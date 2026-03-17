@@ -179,6 +179,7 @@ const translations = {
     marketBriefModerate: 'Moderate conviction',
     marketBriefLow: 'Low conviction',
     marketBriefDisclaimer: 'AI opinion only — not financial advice.',
+    presenceHeader: 'Where people connected from',
     // Chat
     chat: 'Chat',
     chatSubtitle: '🤖 3 AI analysts debate & reply every 30 min',
@@ -385,6 +386,7 @@ const translations = {
     marketBriefModerate: 'ثقة متوسطة',
     marketBriefLow: 'ثقة منخفضة',
     marketBriefDisclaimer: 'رأي الذكاء الاصطناعي فقط — ليس نصيحة مالية.',
+    presenceHeader: 'من أي دول يتابع المستخدمون الأخبار',
     // Chat
     chat: 'ساحة الحوار',
     chatSubtitle: '🤖 ٣ محللين AI يتناقشون ويردون كل ٤ ساعات',

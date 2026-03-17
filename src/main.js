@@ -1012,26 +1012,36 @@ if (isMobile()) {
 (function () {
   const countEl    = $('#liveUsersCount');
   const dropdownEl = document.getElementById('presenceDropdown');
+  let _lastLocations = [];
 
   function renderPresenceDropdown(locations) {
     if (!dropdownEl) return;
-    if (!locations || locations.length === 0) {
-      dropdownEl.innerHTML = '<div class="pd-row pd-empty">No location data</div>';
+    if (locations) _lastLocations = locations;
+    const header = `<div class="pd-header">
+      <span class="pd-header-dot"></span>
+      ${t('presenceHeader')}
+    </div>`;
+    if (!_lastLocations || _lastLocations.length === 0) {
+      dropdownEl.innerHTML = header + '<div class="pd-row pd-empty">No location data yet</div>';
       return;
     }
-    dropdownEl.innerHTML = locations.map(loc =>
+    const rows = _lastLocations.map(loc =>
       `<div class="pd-row">
         <span class="pd-flag">${loc.flag}</span>
         <span class="pd-place">${loc.city}, ${loc.country}</span>
         <span class="pd-count">${loc.count}</span>
       </div>`
     ).join('');
+    dropdownEl.innerHTML = header + rows;
   }
 
   initPresence((count, locations) => {
     if (countEl) countEl.textContent = count;
     renderPresenceDropdown(locations);
   });
+
+  // Re-render header text when language switches
+  onLangChange(() => renderPresenceDropdown(null));
 })();
 
 // ============ Global Keyboard Shortcuts ============
