@@ -241,20 +241,30 @@ h1, h2, h3, h4, h5, h6 {
 .hpc-change.up   { color: #4caf7d; }
 .hpc-change.down { color: #c94040; }
 
+/* Mobile stats/flight buttons — hidden on desktop, shown on mobile only */
+.header-controls .mobile-hdr-btn { display: none; }
+.mobile-hdr-btn.btn-stats {
+    color: #4caf7d;
+    background: rgba(76,175,125,0.09);
+    border-color: rgba(76,175,125,0.35);
+}
+.mobile-hdr-btn.btn-stats.active {
+    background: rgba(76,175,125,0.20);
+    border-color: rgba(76,175,125,0.6);
+}
+.mobile-hdr-btn.btn-flight {
+    color: #4ea8de;
+    background: rgba(78,168,222,0.09);
+    border-color: rgba(78,168,222,0.35);
+}
+.mobile-hdr-btn.btn-flight.active {
+    background: rgba(78,168,222,0.20);
+    border-color: rgba(78,168,222,0.6);
+}
+
 @media (max-width: 900px) {
-    .header-price-ticker,
-    .header-flight-ticker,
-    .header-ticker-divider { display: none; }
-    .ticker-toggle-btn {
-        align-self: center;
-        height: 30px;
-        border-radius: var(--radius-sm);
-        border: 1px solid;
-        padding: 0 9px;
-    }
-    .ticker-toggle-btn.btn-stats  { border-color: rgba(76,175,125,0.35); }
-    .ticker-toggle-btn.btn-flight { border-color: rgba(78,168,222,0.35); }
-    .ticker-toggle-label { display: none; }
+    .header-price-bar { display: none; }
+    .header-controls .mobile-hdr-btn { display: inline-flex; }
 }
 
 /* Hide button text labels in header controls when viewport is tight */

@@ -66,11 +66,13 @@ export function initStatsPanel() {
 export function toggleStatsPanel() {
   const panel = document.getElementById('statsPanel');
   const btn = document.getElementById('statsBtn');
+  const btnMobile = document.getElementById('statsBtnMobile');
   if (!panel) return;
   const opening = panel.classList.contains('closed');
   panel.classList.toggle('closed');
   panel.classList.toggle('mobile-open', opening);
   btn?.classList.toggle('active', opening);
+  btnMobile?.classList.toggle('active', opening);
   if (opening) {
     if (!_statsLoaded) {
       _statsLoaded = true;
@@ -315,11 +317,13 @@ function _renderFlightPanel(data) {
 export function toggleFlightPanel() {
   const panel = document.getElementById('flightPanel');
   const btn   = document.getElementById('flightBtn');
+  const btnMobile = document.getElementById('flightBtnMobile');
   if (!panel) return;
   const opening = panel.classList.contains('closed');
   panel.classList.toggle('closed');
   panel.classList.toggle('mobile-open', opening);
   btn?.classList.toggle('active', opening);
+  btnMobile?.classList.toggle('active', opening);
   if (opening) {
     if (_flightData) {
       _renderFlightPanel(_flightData);

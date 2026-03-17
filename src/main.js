@@ -759,8 +759,10 @@ if (isMobile()) {
   sidebar.classList.add('collapsed');
 }
 $('#statsBtn').addEventListener('click', () => toggleStatsPanel());
+$('#statsBtnMobile')?.addEventListener('click', () => toggleStatsPanel());
 $('#headerPriceTicker').addEventListener('click', () => toggleStatsPanel());
 $('#flightBtn').addEventListener('click', () => toggleFlightPanel());
+$('#flightBtnMobile')?.addEventListener('click', () => toggleFlightPanel());
 $('#headerFlightTicker').addEventListener('click', () => toggleFlightPanel());
 $('#addChannelBtn').addEventListener('click', () => openModal());
 $('#addChannelBtnBottom').addEventListener('click', () => openModal());
@@ -998,8 +1000,10 @@ initPredictions();
 if (isMobile()) {
   document.getElementById('statsPanel')?.classList.add('closed');
   document.getElementById('statsBtn')?.classList.remove('active');
+  document.getElementById('statsBtnMobile')?.classList.remove('active');
   document.getElementById('flightPanel')?.classList.add('closed');
   document.getElementById('flightBtn')?.classList.remove('active');
+  document.getElementById('flightBtnMobile')?.classList.remove('active');
   document.getElementById('chatPanel')?.classList.add('closed');
   document.getElementById('chatHeaderBtn')?.classList.remove('active');
 }
