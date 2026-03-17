@@ -2571,13 +2571,151 @@ body.intel-open { overflow: hidden; }
    ========================================================================== */
 
 /* 7-day commodity price chart */
-.price-chart-area {
-    width: 100%;
-    padding: 10px 14px 8px;
+/* Fixed toggle bar above the scrollable body */
+.price-chart-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 14px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-surface);
     flex-shrink: 0;
+}
+
+/* Canvas wrapper inside the scrollable body */
+.price-chart-inner {
+    width: 100%;
+    height: 220px;
+    padding: 8px 14px 4px;
     box-sizing: border-box;
+    flex-shrink: 0;
+}
+.price-chart-inner canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* Commentary sits inline in the scroll flow */
+.price-commentary-wrap {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+
+/* ── AI Daily Market Brief ── */
+.market-brief {
+    padding: 10px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.mb-loading {
+    padding: 10px 14px;
+}
+.mb-error {
+    padding: 8px 14px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+.mb-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.mb-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent-light);
+}
+.mb-disclaimer {
+    font-size: 9.5px;
+    color: var(--alert-light);
+    font-style: italic;
+}
+.mb-headline {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.45;
+    margin: 0;
+}
+.mb-commentary {
+    font-size: 11.5px;
+    color: var(--text-primary);
+    line-height: 1.65;
+    margin: 0;
+}
+/* Outlook table */
+.mb-outlook {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+}
+.mb-row {
+    display: grid;
+    grid-template-columns: 90px 72px 1fr;
+    align-items: start;
+    gap: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+}
+.mb-asset {
+    color: var(--text-label);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.mb-dir {
+    font-weight: 700;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.mb-dir.mb-up       { color: #4caf7d; }
+.mb-dir.mb-down     { color: #c94040; }
+.mb-dir.mb-sideways { color: var(--text-label); }
+.mb-conviction {
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.mb-reason {
+    grid-column: 1 / -1;
+    font-size: 11px;
+    color: var(--text-primary);
+    font-style: italic;
+    padding-left: 4px;
+    border-left: 2px solid var(--border-light);
+    margin-top: 2px;
+    line-height: 1.5;
+}
+[dir="rtl"] .mb-reason {
+    padding-left: 0;
+    padding-right: 4px;
+    border-left: none;
+    border-right: 2px solid var(--border-light);
+}
+.mb-watch {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    background: rgba(78, 122, 160, 0.07);
+    border: 1px solid rgba(78, 122, 160, 0.15);
+    line-height: 1.5;
+}
+.mb-watch strong {
+    color: var(--accent-light);
+    font-weight: 600;
 }
 .price-chart-header {
     display: flex;

@@ -219,17 +219,20 @@
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
             </div>
-            <!-- 7-day commodity price chart -->
-            <div class="price-chart-area">
-                <div class="price-chart-header">
-                    <span class="price-chart-title" data-i18n="priceChartTitle">7-Day Price History</span>
-                    <div class="price-chart-toggles" id="priceChartToggles"></div>
-                </div>
-                <canvas id="priceHistoryCanvas"></canvas>
+            <!-- Fixed chart header (toggles only) -->
+            <div class="price-chart-header-bar">
+                <span class="price-chart-title" data-i18n="priceChartTitle">7-Day Price History</span>
+                <div class="price-chart-toggles" id="priceChartToggles"></div>
             </div>
-            <!-- Scrollable widgets -->
+            <!-- Single scrollable body: chart + commentary + prices + stocks -->
             <div class="stats-body" id="statsBody">
-                <div class="stats-loading" data-i18n="statsLoading">Loading data…</div>
+                <div class="price-chart-inner">
+                    <canvas id="priceHistoryCanvas"></canvas>
+                </div>
+                <div class="price-commentary-wrap" id="priceCommentaryEl"></div>
+                <div id="statsContent">
+                    <div class="stats-loading" data-i18n="statsLoading">Loading data…</div>
+                </div>
             </div>
         </aside>
 

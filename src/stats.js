@@ -60,6 +60,7 @@ export function initStatsPanel() {
   onLangChange(() => {
     const panel = document.getElementById('statsPanel');
     if (panel && !panel.classList.contains('closed')) loadStats();
+    _briefLoaded = false;
   });
 }
 
@@ -337,12 +338,9 @@ export function toggleFlightPanel() {
 // ---------------------------------------------------------------------------
 
 async function loadStats() {
-  const body = document.getElementById('statsBody');
+  const body = document.getElementById('statsContent');
   if (!body) return;
-
-  // Show skeleton
   renderSkeleton(body);
-
   try {
     const resp = await fetch('/api/stats');
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -385,10 +383,336 @@ function renderError(container) {
   container.innerHTML = `<div class="stats-error">${t('statsNoData')}</div>`;
 }
 
+// ---------------------------------------------------------------------------
+// AI Daily Market Brief
+// ---------------------------------------------------------------------------
+
+let _briefLoaded = false;
+
+function _briefCacheKey() {
+  // One entry per language per day boundary (21:30 UTC)
+  const now = Date.now();
+  const boundary = (() => {
+    const d = new Date();
+    const b = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 21, 30, 0);
+    return now >= b ? b : b - 86400000;
+  })();
+  return `market-brief:${lang()}:${boundary}`;
+}
+
+async function loadMarketBrief(prices) {
+  const el = document.getElementById('priceCommentaryEl');
+  if (!el) return;
+
+  // Show skeleton while loading
+  el.innerHTML = `<div class="mb-loading"><span class="stats-skeleton" style="width:60%;height:11px;display:block;margin-bottom:6px"></span><span class="stats-skeleton" style="width:85%;height:11px;display:block"></span></div>`;
+
+  // Check localStorage daily cache
+  const cacheKey = _briefCacheKey();
+  try {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    if (cached) { renderMarketBrief(cached); return; }
+  } catch { /* ignore corrupt cache */ }
+
+  try {
+    const resp = await fetch(`/api/market-brief?lang=${lang()}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch { /* storage full */ }
+    renderMarketBrief(data);
+  } catch (err) {
+    console.warn('[market-brief] API unavailable, using client fallback:', err.message);
+    // Fetch 30-day history for richer fallback prose
+    try {
+      const hResp = await fetch('/api/commodity-history');
+      const history = hResp.ok ? await hResp.json() : null;
+      renderMarketBriefFallback(prices, history);
+    } catch {
+      renderMarketBriefFallback(prices, null);
+    }
+  }
+}
+
+function renderMarketBriefFallback(prices, history) {
+  const el = document.getElementById('priceCommentaryEl');
+  if (!el) return;
+  if (!prices) { el.innerHTML = ''; return; }
+
+  const isAr = lang() === 'ar';
+  const { oil, brent, gold, natgas } = prices;
+
+  // Collect page headlines for geopolitical context
+  const pageHls = [];
+  document.querySelectorAll('.ticker-item .ticker-text, .update-headline').forEach(n => {
+    const tx = n.textContent.trim();
+    if (tx.length > 25 && tx.length < 180) pageHls.push(tx);
+  });
+  const hlStr = pageHls.join(' ');
+
+  // Geopolitical signal detection
+  const geo = {
+    midEast:  /iran|israel|gaza|lebanon|houthi|yemen|syria|iraq|saudi|hormuz/i.test(hlStr),
+    conflict: /war|attack|strike|bomb|missile|military|conflict|ceasefire|offensive/i.test(hlStr),
+    macro:    /fed|rate|inflation|dollar|reserve|interest|hike|cut|tariff/i.test(hlStr),
+    opec:     /opec|quota|production.?cut|barrel/i.test(hlStr),
+  };
+  const oilHl  = pageHls.find(h => /iran|opec|saudi|oil|pipeline|hormuz|houthi|energy/i.test(h));
+  const goldHl = pageHls.find(h => /war|fed|rate|inflation|dollar|attack|conflict|sanction|gold/i.test(h));
+
+  // 30-day trend analysis
+  function trend(series) {
+    if (!series || series.length < 4) return null;
+    const v = series.map(p => p.close).filter(Boolean);
+    if (v.length < 4) return null;
+    const n  = Math.max(2, Math.floor(v.length / 5));
+    const a0 = v.slice(0, n).reduce((a, b) => a + b) / n;
+    const aN = v.slice(-n).reduce((a, b) => a + b) / n;
+    const pct = ((aN - a0) / a0) * 100;
+    const max = Math.max(...v), min = Math.min(...v), cur = v[v.length - 1];
+    return {
+      pct: +pct.toFixed(1), max: +max.toFixed(2), min: +min.toFixed(2),
+      nearHigh: cur >= max * 0.975,
+      nearLow:  cur <= min * 1.025,
+      dir: pct > 2 ? 'up' : pct < -2 ? 'down' : 'flat',
+    };
+  }
+
+  const oT = trend(history?.oil);
+  const gT = trend(history?.gold);
+  const nT = trend(history?.natgas);
+
+  // Derive outlook per commodity
+  function outlook(price, t) {
+    const dir = price && t ? (t.dir === 'up' && price.changePct > 0 ? 'up' : t.dir === 'down' && price.changePct < 0 ? 'down' : 'sideways') : (price?.changePct > 0 ? 'up' : price?.changePct < 0 ? 'down' : 'sideways');
+    const conviction = (t?.nearHigh || t?.nearLow || Math.abs(price?.changePct || 0) > 2) ? 'moderate' : 'low';
+    return { dir, conviction };
+  }
+
+  const ctx = { oil, brent, gold, natgas, oT, gT, nT, geo, oilHl, goldHl,
+    oOut: outlook(oil, oT), gOut: outlook(gold, gT), nOut: outlook(natgas, nT) };
+
+  el.innerHTML = isAr ? buildBriefAr(ctx) : buildBriefEn(ctx);
+}
+
+function buildBriefEn({ oil, brent, gold, natgas, oT, gT, nT, geo, oilHl, goldHl, oOut, gOut, nOut }) {
+  const paras = [];
+
+  if (oil) {
+    const dir = oil.changePct >= 0 ? 'up' : 'down';
+    const pct = Math.abs(oil.changePct).toFixed(2);
+    let s = `Oil prices went ${dir} ${pct}% today — now at $${oil.price} a barrel.`;
+    if (brent) {
+      const sp = (brent.price - oil.price).toFixed(2);
+      s += ` European oil (Brent) is at $${brent.price}, so the gap between the two is $${sp}.`;
+    }
+    paras.push(s);
+    if (oT) {
+      const tr = oT.dir === 'up' ? `been going up ${oT.pct}%` : oT.dir === 'down' ? `been going down ${Math.abs(oT.pct)}%` : `stayed pretty flat`;
+      let s2 = `Over the past month, oil has ${tr}, bouncing between $${oT.min} and $${oT.max}.`;
+      if (oT.nearHigh) s2 += ' Right now it is near its highest point this month — prices are being pushed up.';
+      else if (oT.nearLow) s2 += ' Right now it is near its lowest point this month — a critical moment.';
+      paras.push(s2);
+    }
+    if (oilHl) {
+      paras.push(`News like "${oilHl.slice(0, 90)}${oilHl.length > 90 ? '…' : ''}" is one of the main reasons oil prices move.`);
+    } else if (geo.midEast || geo.opec) {
+      paras.push(geo.opec
+        ? `OPEC countries (the big oil producers) are controlling how much oil they sell — this keeps prices from falling too much.`
+        : `Tensions in the Middle East are making oil more expensive because people worry about supply being disrupted. When there is conflict near oil-producing regions, prices go up.`);
+    }
+  }
+
+  if (gold) {
+    const gdir = gold.changePct >= 0 ? 'up' : 'down';
+    let s = `Gold went ${gdir} ${Math.abs(gold.changePct).toFixed(2)}% today, now at $${gold.price.toLocaleString()} per ounce.`;
+    if (gold.price >= 5000) s += ' This is exceptionally high — gold at $5,000+ means a lot of people around the world are nervous and buying gold to protect their money. When people are scared about the economy or wars, they rush to gold.';
+    else if (gold.price >= 3000) s += ' Gold above $3,000 is historically very high — it usually means people are worried about something big: wars, economic problems, or political uncertainty.';
+    paras.push(s);
+    if (gT) {
+      const gr = gT.dir === 'up' ? `been rising ${gT.pct}%` : gT.dir === 'down' ? `dropped ${Math.abs(gT.pct)}%` : `stayed in the same range`;
+      let s2 = `Over the past month, gold has ${gr}, moving between $${gT.min.toLocaleString()} and $${gT.max.toLocaleString()}.`;
+      if (gT.nearHigh) s2 += ' It is currently near its highest point this month — the trend is still going up.';
+      paras.push(s2);
+    }
+    if (goldHl) {
+      paras.push(`Events like "${goldHl.slice(0, 90)}${goldHl.length > 90 ? '…' : ''}" are exactly why people buy gold right now — it is their way of keeping their money safe.`);
+    } else if (geo.conflict || geo.macro) {
+      paras.push(geo.conflict
+        ? `The ongoing conflict in the region is the main reason gold is high. In times of war or instability, people worldwide move their savings into gold — it is the oldest "safe" investment.`
+        : `When central banks like the US Federal Reserve change interest rates, gold reacts strongly. Right now, nobody is sure what they will do next — so gold goes up.`);
+    }
+  }
+
+  if (natgas && Math.abs(natgas.changePct) > 1.5) {
+    paras.push(`Natural gas (used for heating and electricity) went ${natgas.changePct > 0 ? 'up' : 'down'} ${Math.abs(natgas.changePct).toFixed(2)}% today to $${natgas.price}${Math.abs(natgas.changePct) > 3 ? ' — a big move. Worth keeping an eye on.' : '.'}`);
+  }
+
+  const rows = [];
+  if (oil) {
+    const r = oT?.nearHigh ? 'Oil is near its monthly peak. It could keep going up, but a pullback is also possible.' : oT?.nearLow ? 'Oil is near its monthly low. It could bounce back, or drop further if bad news comes.' : 'No strong monthly trend yet — today was positive but wait and see what happens next.';
+    rows.push({ asset: 'WTI Oil', dir: oOut.dir, conv: oOut.conviction, reason: r });
+  }
+  if (gold) {
+    const r = gold.price >= 5000 ? 'Very high by any standard. If peace breaks out or things calm down politically, gold could drop fast. But if tensions stay, it could go even higher.' : gT?.dir === 'up' ? 'The trend has been going up. As long as there is uncertainty in the world, gold tends to stay strong.' : 'High but not moving much — could go either way depending on what happens next politically.';
+    rows.push({ asset: 'Gold', dir: gOut.dir, conv: gOut.conviction, reason: r });
+  }
+  if (natgas) {
+    rows.push({ asset: 'Natural Gas', dir: nOut.dir, conv: 'low', reason: 'Gas prices depend a lot on the weather and the season. Hard to predict. Do not read too much into short-term moves.' });
+  }
+
+  const watch = geo.midEast && geo.conflict
+    ? 'If the conflict spreads near major oil shipping routes (like the Strait of Hormuz), both oil and gold prices could spike sharply overnight.'
+    : geo.opec ? 'If OPEC decides to cut oil production, prices will go up quickly. If they increase supply, prices may drop.'
+    : geo.macro ? 'The next US interest rate decision is the key event to watch — it will move gold, the dollar, and stock markets at the same time.'
+    : 'A surprise conflict or political crisis in the Middle East is always a risk that markets are not fully pricing in.';
+
+  const dirL = d => d === 'up' ? '↑ Going up' : d === 'down' ? '↓ Going down' : '→ Holding steady';
+  const convL = c => c === 'high' ? 'Pretty confident' : c === 'moderate' ? 'Somewhat confident' : 'Hard to say';
+  const rowsHtml = rows.map(r => `
+    <div class="mb-row">
+      <span class="mb-asset">${r.asset}</span>
+      <span class="mb-dir mb-${r.dir}">${dirL(r.dir)}</span>
+      <span class="mb-conviction">${convL(r.conv)}</span>
+      <span class="mb-reason">${r.reason}</span>
+    </div>`).join('');
+
+  return `<div class="market-brief">
+    <div class="mb-header"><span class="mb-title">Today's Market Breakdown</span><span class="mb-disclaimer">Analyst view only — not financial advice.</span></div>
+    <p class="mb-commentary">${paras.join(' ')}</p>
+    ${rowsHtml ? `<div class="mb-outlook">${rowsHtml}</div>` : ''}
+    <p class="mb-watch"><strong>👁 Thing to watch:</strong> ${watch}</p>
+  </div>`;
+}
+
+function buildBriefAr({ oil, brent, gold, natgas, oT, gT, nT, geo, oilHl, goldHl, oOut, gOut, nOut }) {
+  const paras = [];
+
+  if (oil) {
+    const dir = oil.changePct >= 0 ? 'ارتفع' : 'انخفض';
+    const pct = Math.abs(oil.changePct).toFixed(2);
+    let s = `أسعار النفط ${dir} ${pct}% اليوم — السعر الآن $${oil.price} للبرميل.`;
+    if (brent) {
+      const sp = (brent.price - oil.price).toFixed(2);
+      s += ` النفط الأوروبي (برنت) عند $${brent.price}، والفرق بين النوعين $${sp}.`;
+    }
+    paras.push(s);
+    if (oT) {
+      const tr = oT.dir === 'up' ? `ارتفع ${oT.pct}%` : oT.dir === 'down' ? `انخفض ${Math.abs(oT.pct)}%` : `بقي في نطاق ضيق`;
+      let s2 = `خلال الشهر الماضي، النفط ${tr} بين $${oT.min} و$${oT.max}.`;
+      if (oT.nearHigh) s2 += ' حالياً هو قريب من أعلى نقطة في الشهر — الضغط على الارتفاع واضح.';
+      else if (oT.nearLow) s2 += ' حالياً قريب من أدنى نقطة في الشهر — لحظة حاسمة.';
+      paras.push(s2);
+    }
+    if (oilHl) {
+      paras.push(`أخبار مثل "${oilHl.slice(0, 90)}${oilHl.length > 90 ? '…' : ''}" هي أحد الأسباب الرئيسية التي تحرك أسعار النفط.`);
+    } else if (geo.midEast || geo.opec) {
+      paras.push(geo.opec
+        ? `دول أوبك (كبار منتجي النفط) تتحكم في كمية النفط المعروضة في السوق — هذا يمنع الأسعار من الانخفاض الكبير.`
+        : `التوترات في الشرق الأوسط ترفع أسعار النفط لأن الناس يخشون انقطاع الإمدادات. كلما اشتد التوتر بالقرب من مناطق الإنتاج، ارتفعت الأسعار.`);
+    }
+  }
+
+  if (gold) {
+    const dir = gold.changePct >= 0 ? 'ارتفع' : 'انخفض';
+    let s = `الذهب ${dir} ${Math.abs(gold.changePct).toFixed(2)}% اليوم، والسعر الآن $${gold.price.toLocaleString()} للأونصة.`;
+    if (gold.price >= 5000) s += ' هذا مستوى استثنائي جداً. الذهب فوق $5000 يعني أن كثيراً من الناس حول العالم قلقون ويشترون الذهب لحماية أموالهم. في أوقات الحروب والأزمات، يهرب الناس للذهب.';
+    else if (gold.price >= 3000) s += ' الذهب فوق $3000 تاريخياً مرتفع جداً — عادةً يعني أن الناس قلقون من شيء كبير: حروب، أزمات اقتصادية، أو عدم استقرار سياسي.';
+    paras.push(s);
+    if (gT) {
+      const gr = gT.dir === 'up' ? `كان يرتفع ${gT.pct}%` : gT.dir === 'down' ? `انخفض ${Math.abs(gT.pct)}%` : `بقي في نفس النطاق`;
+      let s2 = `خلال الشهر الماضي، الذهب ${gr} بين $${gT.min.toLocaleString()} و$${gT.max.toLocaleString()}.`;
+      if (gT.nearHigh) s2 += ' حالياً قريب من أعلى نقطة هذا الشهر — الاتجاه لا يزال صاعداً.';
+      paras.push(s2);
+    }
+    if (goldHl) {
+      paras.push(`أحداث مثل "${goldHl.slice(0, 90)}${goldHl.length > 90 ? '…' : ''}" هي بالضبط السبب الذي يجعل الناس يشترون الذهب الآن — طريقتهم لحماية مدخراتهم.`);
+    } else if (geo.conflict || geo.macro) {
+      paras.push(geo.conflict
+        ? `النزاع الجاري في المنطقة هو السبب الرئيسي لارتفاع الذهب. في أوقات عدم الاستقرار، يضع الناس مدخراتهم في الذهب — أقدم استثمار آمن في التاريخ.`
+        : `قرارات البنك المركزي الأمريكي بشأن أسعار الفائدة تؤثر مباشرة على الذهب. حين لا يعرف أحد ماذا سيقرر، يرتفع الذهب.`);
+    }
+  }
+
+  if (natgas && Math.abs(natgas.changePct) > 1.5) {
+    paras.push(`الغاز الطبيعي (المستخدم في التدفئة والكهرباء) ${natgas.changePct > 0 ? 'ارتفع' : 'انخفض'} ${Math.abs(natgas.changePct).toFixed(2)}% اليوم إلى $${natgas.price}${Math.abs(natgas.changePct) > 3 ? ' — تحرك كبير. يستحق المتابعة.' : '.'}`);
+  }
+
+  const rows = [];
+  if (oil) {
+    const r = oT?.nearHigh ? 'النفط قريب من أعلى نقطة شهرية. قد يستمر في الارتفاع، لكن تراجع مؤقت ممكن أيضاً.' : oT?.nearLow ? 'النفط قريب من أدنى نقطة شهرية. قد يرتد للأعلى، أو يواصل الانخفاض إذا جاءت أخبار سيئة.' : 'لم يتضح اتجاه واضح هذا الشهر — اليوم كان إيجابياً، لكن انتظر لترى ما يأتي غداً.';
+    rows.push({ asset: 'نفط WTI', dir: oOut.dir, conv: oOut.conviction, reason: r });
+  }
+  if (gold) {
+    const r = gold.price >= 5000 ? 'مرتفع جداً تاريخياً. إذا تحسن الوضع سياسياً أو انخفضت الفائدة، قد ينخفض الذهب بسرعة. لكن طالما التوترات مستمرة، قد يواصل الارتفاع.' : gT?.dir === 'up' ? 'الاتجاه صاعد. طالما العالم غير مستقر، الذهب يميل للارتفاع.' : 'مرتفع لكن لا يتحرك كثيراً — الاتجاه التالي يعتمد على المستجدات السياسية.';
+    rows.push({ asset: 'الذهب', dir: gOut.dir, conv: gOut.conviction, reason: r });
+  }
+  if (natgas) {
+    rows.push({ asset: 'الغاز الطبيعي', dir: nOut.dir, conv: 'low', reason: 'أسعار الغاز تتأثر كثيراً بالطقس والموسم. صعب التنبؤ به. لا تتخذ قرارات كبيرة بناءً على تحركاته.' });
+  }
+
+  const watch = geo.midEast && geo.conflict
+    ? 'إذا امتد النزاع نحو مناطق شحن النفط الكبرى (كمضيق هرمز)، سترتفع أسعار النفط والذهب بشكل حاد بين ليلة وضحاها.'
+    : geo.opec ? 'إذا قررت أوبك خفض إنتاج النفط، سترتفع الأسعار بسرعة. وإذا زادت الإنتاج، قد تنخفض.'
+    : geo.macro ? 'القرار القادم بشأن أسعار الفائدة الأمريكية هو الحدث الأهم — سيحرك الذهب والدولار والأسواق في وقت واحد.'
+    : 'أزمة سياسية أو صراع مفاجئ في الشرق الأوسط هو الخطر الأكبر الذي لا تأخذه الأسواق بجدية كافية حالياً.';
+
+  const dirL  = d => d === 'up' ? '↑ صاعد' : d === 'down' ? '↓ هابط' : '→ مستقر';
+  const convL = c => c === 'high' ? 'ثقة عالية' : c === 'moderate' ? 'ثقة متوسطة' : 'صعب التوقع';
+  const rowsHtml = rows.map(r => `
+    <div class="mb-row">
+      <span class="mb-asset">${r.asset}</span>
+      <span class="mb-dir mb-${r.dir}">${dirL(r.dir)}</span>
+      <span class="mb-conviction">${convL(r.conv)}</span>
+      <span class="mb-reason">${r.reason}</span>
+    </div>`).join('');
+
+  return `<div class="market-brief">
+    <div class="mb-header"><span class="mb-title">تحليل السوق اليومي</span><span class="mb-disclaimer">رأي تحليلي — ليس نصيحة مالية</span></div>
+    <p class="mb-commentary">${paras.join(' ')}</p>
+    ${rowsHtml ? `<div class="mb-outlook">${rowsHtml}</div>` : ''}
+    <p class="mb-watch"><strong>👁 الشيء المهم لمتابعته:</strong> ${watch}</p>
+  </div>`;
+}
+
+function renderMarketBrief(data) {
+  const el = document.getElementById('priceCommentaryEl');
+  if (!el || !data) return;
+
+  const dirIcon = (d) => d === 'up' ? t('marketBriefUp') : d === 'down' ? t('marketBriefDown') : t('marketBriefSideways');
+  const dirClass = (d) => d === 'up' ? 'mb-up' : d === 'down' ? 'mb-down' : 'mb-sideways';
+  const convLabel = (c) => c === 'high' ? t('marketBriefHigh') : c === 'low' ? t('marketBriefLow') : t('marketBriefModerate');
+
+  const outlook = Array.isArray(data.outlook) ? data.outlook.map(o => `
+    <div class="mb-row">
+      <span class="mb-asset">${o.asset}</span>
+      <span class="mb-dir ${dirClass(o.direction)}">${dirIcon(o.direction)}</span>
+      <span class="mb-conviction">${convLabel(o.conviction)}</span>
+      <span class="mb-reason">${o.reason || ''}</span>
+    </div>`).join('') : '';
+
+  el.innerHTML = `
+    <div class="market-brief">
+      <div class="mb-header">
+        <span class="mb-title">${t('marketBriefTitle')}</span>
+        <span class="mb-disclaimer">${t('marketBriefDisclaimer')}</span>
+      </div>
+      ${data.headline ? `<p class="mb-headline">${data.headline}</p>` : ''}
+      ${data.commentary ? `<p class="mb-commentary">${data.commentary}</p>` : ''}
+      ${outlook ? `<div class="mb-outlook">${outlook}</div>` : ''}
+      ${data.watch ? `<p class="mb-watch"><strong>${t('marketBriefWatch')}:</strong> ${data.watch}</p>` : ''}
+    </div>`;
+}
+
 
 
 function renderStats(container, data) {
   const { prices, stocks } = data;
+
+  // Load AI brief once per day
+  if (!_briefLoaded) {
+    _briefLoaded = true;
+    loadMarketBrief(prices);
+  }
 
   container.innerHTML = `
     <!-- Market Pulse -->
@@ -481,7 +805,7 @@ async function loadCommodityChart() {
     _renderPriceChart();
   } catch (err) {
     console.error('[commodity-chart]', err);
-    const area = document.querySelector('.price-chart-area');
+    const area = document.querySelector('.price-chart-inner');
     if (area) area.innerHTML = `<div class="stats-error">${t('priceChartError')}</div>`;
   }
 }
@@ -525,7 +849,7 @@ function _renderPriceChart() {
     data: { labels, datasets },
     options: {
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
