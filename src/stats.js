@@ -239,7 +239,11 @@ function _renderFlightPanel(data) {
         <span class="flt-th flt-th-total">${headerLabel2}</span>
       </div>`;
 
-    const rows = data.countries.map(c => {
+    const rows = [...data.countries].sort((a, b) => {
+      const aN = isYesterday ? (a.yesterdayTotal || 0) : Math.max(a.n, a.todayTotal || 0);
+      const bN = isYesterday ? (b.yesterdayTotal || 0) : Math.max(b.n, b.todayTotal || 0);
+      return bN - aN;
+    }).map(c => {
       const nowN     = c.n;
       const todayN   = Math.max(c.n, c.todayTotal || 0);
       const yestN    = c.yesterdayTotal || 0;

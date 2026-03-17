@@ -484,10 +484,10 @@ confidence_level must be one of: Low, Moderate, High`;
     serverCache.set(requestLang, { data: result, timestamp: Date.now() });
     console.log(`[intelligence] Cache updated for lang=${requestLang}`);
 
-    // Post AI chat message when Arabic analysis completes
-    if (requestLang === 'ar') {
-      postAiChatDev(headlines, _serverPort).catch(() => {});
-    }
+    // Post AI chat message when Arabic analysis completes — disabled in local dev
+    // if (requestLang === 'ar') {
+    //   postAiChatDev(headlines, _serverPort).catch(() => {});
+    // }
 
     return result;
   }
@@ -510,15 +510,10 @@ confidence_level must be one of: Low, Moderate, High`;
       };
       prewarm(); // start immediately
 
-      // Schedule AI chat: every 4 hours (rotating persona)
-      setInterval(() => {
-        // Trigger an Arabic analysis which will fire postAiChatDev
-        runAnalysis('ar').catch(e => console.warn(`[intelligence] Scheduled AR analysis failed:`, e.message));
-      }, 4 * 60 * 60 * 1000);
-
-      // Also refresh intelligence cache every hour
+      // Refresh intelligence cache every hour
       setInterval(prewarm, 60 * 60 * 1000);
-      console.log(`[intelligence] AI chat: 1 persona every 4h (rotating), next in ~4h`);
+      // AI chat auto-posting disabled in local dev (chat-timer runs only in production via GitHub Actions)
+      console.log(`[intelligence] AI chat auto-posting disabled in dev`);
 
       server.middlewares.use('/api/intelligence', (req, res) => {
         if (req.method !== 'POST') {
@@ -1227,28 +1222,10 @@ function predictionsPlugin(env) {
   }
 
   async function generateQuestion(language) {
-    if (!API_KEY || !ENDPOINT) {
-      // Fallback: return a static question when no AI credentials are available
-      return language === 'ar'
-        ? { question: 'هل ستشهد المنطقة تهدئة دبلوماسية خلال الأسبوع القادم؟', aiPick: 'لا', aiReason: 'التوترات الإقليمية لا تزال مرتفعة بدون مسار واضح للحل.' }
-        : { question: 'Will the region see a diplomatic de-escalation in the next week?', aiPick: 'No', aiReason: 'Regional tensions remain elevated with no clear resolution path.' };
-    }
-
-    const prompt = language === 'ar'
-      ? `أنت محلل سياسي متخصص في الشرق الأوسط. اطرح سؤالاً تنبؤياً واحداً بصيغة نعم/لا حول حدث سياسي قائم أو متوقع في المنطقة خلال الأيام القادمة.\nأجب بـ JSON فقط (بدون markdown) بالصيغة:\n{"question":"السؤال","aiPick":"نعم أو لا","aiReason":"جملة واحدة تشرح التوقع"}`
-      : `You are a political analyst specializing in the Middle East. Pose one yes/no predictive question about an ongoing or expected political event in the region within the next few days.\nRespond with JSON only (no markdown):\n{"question":"The question","aiPick":"Yes or No","aiReason":"One sentence explaining the prediction"}`;
-
-    const { default: OpenAI } = await import('openai');
-    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
-    const resp = await client.chat.completions.create({
-      model: MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 300,
-      temperature: 0.85,
-    });
-    const raw = (resp.choices?.[0]?.message?.content || '').trim();
-    const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/s);
-    return JSON.parse(fenced ? fenced[1].trim() : raw);
+    // Daily AI question disabled in local dev — always return a static placeholder
+    return language === 'ar'
+      ? { question: 'هل ستشهد المنطقة تهدئة دبلوماسية خلال الأسبوع القادم؟', aiPick: 'لا', aiReason: 'التوترات الإقليمية لا تزال مرتفعة بدون مسار واضح للحل.' }
+      : { question: 'Will the region see a diplomatic de-escalation in the next week?', aiPick: 'No', aiReason: 'Regional tensions remain elevated with no clear resolution path.' };
   }
 
   async function ensureQuestion(language) {
