@@ -1025,13 +1025,14 @@ if (isMobile()) {
       dropdownEl.innerHTML = header + '<div class="pd-row pd-empty">No location data yet</div>';
       return;
     }
-    const rows = _lastLocations.map(loc =>
-      `<div class="pd-row">
+    const rows = _lastLocations.map(loc => {
+      const place = loc.city && loc.country ? `${loc.city}, ${loc.country}` : loc.country || loc.city || '—';
+      return `<div class="pd-row">
         <span class="pd-flag">${loc.flag}</span>
-        <span class="pd-place">${loc.city}, ${loc.country}</span>
+        <span class="pd-place">${place}</span>
         <span class="pd-count">${loc.count}</span>
-      </div>`
-    ).join('');
+      </div>`;
+    }).join('');
     dropdownEl.innerHTML = header + rows;
   }
 

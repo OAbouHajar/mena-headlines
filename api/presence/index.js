@@ -32,28 +32,48 @@ function buildLocations() {
   cleanStale();
   const groups = new Map();
   for (const { city, country, code } of sessions.values()) {
-    const key = `${code || '??'}:${city || 'Unknown'}`;
-    if (!groups.has(key)) groups.set(key, { flag: countryFlag(code), city: city || 'Unknown', country: country || 'Unknown', count: 0 });
+    const key = code ? `${code}:${city}` : '??:unknown';
+    if (!groups.has(key)) groups.set(key, { flag: countryFlag(code), city: city || null, country: country || null, code: code || null, count: 0 });
     groups.get(key).count++;
   }
   return [...groups.values()].sort((a, b) => b.count - a.count);
 }
 
+async function geoFetch(url, mapFn) {
+  const ac = new AbortController();
+  const tid = setTimeout(() => ac.abort(), 4000);
+  try {
+    const r = await fetch(url, { signal: ac.signal });
+    clearTimeout(tid);
+    if (!r.ok) return null;
+    const d = await r.json();
+    return mapFn(d);
+  } catch {
+    clearTimeout(tid);
+    return null;
+  }
+}
+
 async function geoLookup(ip) {
-  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('::ffff:127.')) {
     return { city: 'Local', country: 'Local', code: null };
   }
   if (ipCache.has(ip)) return ipCache.get(ip);
-  try {
-    const r = await fetch(`http://ip-api.com/json/${ip}?fields=country,countryCode,city`);
-    if (!r.ok) throw new Error('geo fail');
-    const d = await r.json();
-    const geo = { city: d.city || 'Unknown', country: d.country || 'Unknown', code: d.countryCode || null };
-    ipCache.set(ip, geo);
-    return geo;
-  } catch {
-    return { city: 'Unknown', country: 'Unknown', code: null };
-  }
+
+  // Try ip-api.com first (HTTP, works from Azure), then ipwho.is as fallback
+  const geo =
+    await geoFetch(
+      `http://ip-api.com/json/${ip}?fields=status,country,countryCode,city`,
+      d => d.status === 'success' && d.city ? { city: d.city, country: d.country, code: d.countryCode } : null
+    ) ||
+    await geoFetch(
+      `https://ipwho.is/${ip}`,
+      d => d.success && d.city ? { city: d.city, country: d.country, code: d.country_code } : null
+    ) ||
+    { city: null, country: null, code: null };
+
+  ipCache.set(ip, geo);
+  return geo;
 }
 
 module.exports = async function (context, req) {
