@@ -13,7 +13,7 @@ let _statsLoaded = false;
 let _chart = null;
 let _chartData = null;
 let _chartFetched = false;  // true once a successful fetch has been made
-let _chartVisible = { oil: true, gold: true, brent: true, natgas: true };
+let _chartVisible = { oil: false, gold: true, brent: false, natgas: false };
 
 // ---------------------------------------------------------------------------
 // Public API

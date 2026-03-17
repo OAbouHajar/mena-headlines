@@ -732,11 +732,49 @@ function flightsPlugin(env = {}) {
   // Cache for 5 minutes to stay within OpenSky's anonymous rate limits (~400 req/day)
   let _cache = null;
   let _cacheTime = 0;
-  const CACHE_TTL = 300 * 1000; 
+  const CACHE_TTL = 300 * 1000;
 
   // OAuth2 Token handling
   let _token = null;
   let _tokenExpiry = 0;
+
+  // Daily accumulator — mirrors api/flights/index.js logic
+  // Persisted to .flights-dev.json so yesterday survives server restarts
+  const FLIGHTS_DEV_FILE = join(process.cwd(), '.flights-dev.json');
+  let _dayAccum  = { date: '', globalSeen: [], bySeen: {} };  // arrays instead of Sets for JSON
+  let _yesterday = { date: '', globalTotal: 0, byCountry: {} };
+
+  // Load persisted state on startup
+  try {
+    if (existsSync(FLIGHTS_DEV_FILE)) {
+      const saved = JSON.parse(readFileSync(FLIGHTS_DEV_FILE, 'utf8'));
+      if (saved._dayAccum)  _dayAccum  = saved._dayAccum;
+      if (saved._yesterday) _yesterday = saved._yesterday;
+    }
+  } catch { /* ignore */ }
+
+  function _persistFlightState() {
+    try { writeFileSync(FLIGHTS_DEV_FILE, JSON.stringify({ _dayAccum, _yesterday })); } catch {}
+  }
+
+  function _getTodayUTC() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function _maybeResetAccum() {
+    const today = _getTodayUTC();
+    if (_dayAccum.date !== today) {
+      if (_dayAccum.date) {
+        _yesterday = {
+          date:         _dayAccum.date,
+          globalTotal:  _dayAccum.globalSeen.length,
+          byCountry:    Object.fromEntries(Object.entries(_dayAccum.bySeen).map(([k, v]) => [k, v.length])),
+        };
+      }
+      _dayAccum = { date: today, globalSeen: [], bySeen: {} };
+      _persistFlightState();
+    }
+  }
 
   async function getOpenSkyToken() {
     if (_token && Date.now() < _tokenExpiry) return _token;
@@ -920,33 +958,46 @@ function flightsPlugin(env = {}) {
       console.log(`[flights] Parsed ${airborne.length} airborne flights.`);
 
       let actualLat, actualLon;
-      
+
+      _maybeResetAccum();
       const countryCounts = {};
       for (const s of airborne) {
         // OpenSky index 5: lon, index 6: lat
         actualLon = s[5];
         actualLat = s[6];
+        const id = s[0] || `${Math.round(actualLon * 100)}_${Math.round(actualLat * 100)}`;
+
+        // global accumulation
+        if (!_dayAccum.globalSeen.includes(id)) _dayAccum.globalSeen.push(id);
 
         for (const c of _ME_COUNTRIES) {
           const [latMin, latMax, lonMin, lonMax] = c.bbox;
           if (actualLat >= latMin && actualLat <= latMax && actualLon >= lonMin && actualLon <= lonMax) {
             countryCounts[c.ar] = (countryCounts[c.ar] || 0) + 1;
+            if (!_dayAccum.bySeen[c.ar]) _dayAccum.bySeen[c.ar] = [];
+            if (!_dayAccum.bySeen[c.ar].includes(id)) _dayAccum.bySeen[c.ar].push(id);
             break;
           }
         }
       }
+      _persistFlightState();
 
       const countries = _ME_COUNTRIES.map(c => ({
-        flag: c.flag,
-        ar:   c.ar,
-        n:    countryCounts[c.ar] || 0,
+        flag:           c.flag,
+        ar:             c.ar,
+        en:             c.en,
+        n:              countryCounts[c.ar] || 0,
+        todayTotal:     Math.max(countryCounts[c.ar] || 0, (_dayAccum.bySeen[c.ar] || []).length),
+        yesterdayTotal: _yesterday.byCountry[c.ar] || 0,
       })).sort((a, b) => b.n - a.n);
 
-      const count   = airborne.length;
+      const count          = airborne.length;
+      const totalToday     = Math.max(count, _dayAccum.globalSeen.length);
+      const yesterdayTotal = _yesterday.globalTotal;
       const highest = airborne.length ? Math.round(Math.max(...airborne.map(s => s[7] || 0))) : 0;
       const fastest = airborne.length ? Math.round(Math.max(...airborne.map(s => s[9] || 0)) * 3.6) : 0;
 
-      const result = { count, highest, fastest, countries };
+      const result = { count, totalToday, yesterdayTotal, highest, fastest, countries };
       
       // Update cache
       if (airborne.length > 0) {
