@@ -21,20 +21,29 @@ function generateId() {
 async function selfGeo() {
   const cached = sessionStorage.getItem('_presence_geo');
   if (cached) { try { return JSON.parse(cached); } catch {} }
-  try {
-    const ac  = new AbortController();
-    const tid = setTimeout(() => ac.abort(), 5000);
-    const r   = await fetch('https://ipwho.is/', { signal: ac.signal });
-    clearTimeout(tid);
-    if (!r.ok) return null;
-    const d = await r.json();
-    if (!d.success) return null;
-    const geo = { city: d.city || null, country: d.country || null, code: d.country_code || null };
-    sessionStorage.setItem('_presence_geo', JSON.stringify(geo));
-    return geo;
-  } catch {
-    return null;
+
+  async function tryFetch(url, mapFn) {
+    try {
+      const ac  = new AbortController();
+      const tid = setTimeout(() => ac.abort(), 5000);
+      const r   = await fetch(url, { signal: ac.signal });
+      clearTimeout(tid);
+      if (!r.ok) return null;
+      const d = await r.json();
+      return mapFn(d);
+    } catch { return null; }
   }
+
+  const geo =
+    await tryFetch('https://ipwho.is/',
+      d => d.success && d.city ? { city: d.city, country: d.country, code: d.country_code } : null) ||
+    await tryFetch('https://ip-api.com/json/?fields=status,country,countryCode,city',
+      d => d.status === 'success' && d.city ? { city: d.city, country: d.country, code: d.countryCode } : null) ||
+    await tryFetch('https://freeipapi.com/api/json',
+      d => d.cityName && d.cityName !== '-' ? { city: d.cityName, country: d.countryName, code: d.countryCode } : null);
+
+  if (geo) sessionStorage.setItem('_presence_geo', JSON.stringify(geo));
+  return geo || null;
 }
 
 async function apiPost(sid, geo) {
@@ -76,8 +85,9 @@ export async function initPresence(onCountChange) {
 
   _sessionId = generateId();
 
-  // Resolve geo once (client-side, browser → ipwho.is — avoids datacenter IP blocks)
-  selfGeo().then(g => { _geo = g; });
+  // Resolve geo first (client-side, browser → ipwho.is — avoids datacenter IP blocks)
+  // Must be awaited so the first heartbeat carries geo params
+  _geo = await selfGeo();
 
   // Register this session and get initial count + locations
   const initial = await apiPost(_sessionId, _geo);

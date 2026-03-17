@@ -1,4 +1,58 @@
 // api/flights/index.js — uses global fetch (Node 18+), credentials hardcoded as fallback
+const { BlobServiceClient } = require('@azure/storage-blob');
+
+// ── Blob persistence for _dayAccum ──────────────────────────────────────────
+const BLOB_CONTAINER = 'flights-cache';
+const BLOB_NAME      = 'day-accum.json';
+let _blobBlockClient = null;
+
+function _getBlockClient() {
+  if (_blobBlockClient) return _blobBlockClient;
+  const connStr = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  if (!connStr) return null;
+  const container = BlobServiceClient.fromConnectionString(connStr).getContainerClient(BLOB_CONTAINER);
+  _blobBlockClient = container.getBlockBlobClient(BLOB_NAME);
+  return _blobBlockClient;
+}
+
+async function _loadAccumFromBlob() {
+  try {
+    const connStr = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    if (!connStr) return null;
+    // ensure container exists
+    await BlobServiceClient.fromConnectionString(connStr)
+      .getContainerClient(BLOB_CONTAINER).createIfNotExists();
+    const client = _getBlockClient();
+    const dl     = await client.download();
+    const chunks = [];
+    for await (const chunk of dl.readableStreamBody) chunks.push(chunk);
+    const raw = JSON.parse(Buffer.concat(chunks).toString());
+    return {
+      date:       raw.date || '',
+      globalSeen: new Set(raw.globalSeen || []),
+      bySeen:     Object.fromEntries(
+        Object.entries(raw.bySeen || {}).map(([k, v]) => [k, new Set(v)])
+      ),
+    };
+  } catch { return null; }
+}
+
+async function _saveAccumToBlob(accum) {
+  try {
+    const client  = _getBlockClient();
+    if (!client) return;
+    const payload = JSON.stringify({
+      date:       accum.date,
+      globalSeen: [...accum.globalSeen],
+      bySeen:     Object.fromEntries(
+        Object.entries(accum.bySeen).map(([k, v]) => [k, [...v]])
+      ),
+    });
+    await client.upload(payload, Buffer.byteLength(payload), { overwrite: true });
+  } catch { /* best-effort */ }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 const _ME_COUNTRIES = [
   { flag: '🇸🇦', ar: 'السعودية',   en: 'Saudi Arabia', bbox: [16.0, 32.2, 34.5, 55.7] },
   { flag: '🇦🇪', ar: 'الإمارات',    en: 'UAE',          bbox: [22.5, 26.2, 51.0, 56.5] },
@@ -30,15 +84,22 @@ const PASSWORD      = process.env.OPENSKY_PASSWORD;
 let _token = null;
 let _tokenExpiry = 0;
 
-// Daily flight accumulator — best-effort (resets on cold start)
+// Daily flight accumulator — persisted to Azure Blob Storage to survive cold starts
 let _dayAccum    = { date: '', globalSeen: new Set(), bySeen: {} };
 let _yesterday   = { date: '', globalTotal: 0, byCountry: {} };
+let _accumLoaded = false;
 
 function _getTodayUTC() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function _maybeResetAccum() {
+async function _maybeResetAccum() {
+  // Load persisted accum from blob on first invocation after a cold start
+  if (!_accumLoaded) {
+    _accumLoaded = true;
+    const saved = await _loadAccumFromBlob();
+    if (saved) _dayAccum = saved;
+  }
   const today = _getTodayUTC();
   if (_dayAccum.date !== today) {
     if (_dayAccum.date) {
@@ -183,7 +244,7 @@ module.exports = async function (context, req) {
     const airborne = states.filter(s => s[5] != null && s[6] != null);
     context.log('[flights] airborne: ' + airborne.length);
 
-    _maybeResetAccum();
+    await _maybeResetAccum();
     const countryCounts = {};
     for (const s of airborne) {
       const id  = s[0] || `${Math.round(s[5] * 100)}_${Math.round(s[6] * 100)}`;
@@ -199,6 +260,8 @@ module.exports = async function (context, req) {
         }
       }
     }
+    // Persist updated accumulator to blob (fire-and-forget)
+    _saveAccumToBlob(_dayAccum);
 
     const count          = airborne.length;
     const totalToday     = Math.max(count, _dayAccum.globalSeen.size);
