@@ -168,7 +168,7 @@ const translations = {
     hoursAgo: (h) => `${h}h ago`,
     // Stats
     topStocks: 'Top 10 Stocks',
-    marketBriefTitle: 'Daily Market Brief · AI',
+    marketBriefTitle: 'Market Analyst 📊',
     marketBriefLoading: 'Generating brief…',
     marketBriefError: 'Brief unavailable',
     marketBriefWatch: '👁 Watch',
@@ -179,6 +179,11 @@ const translations = {
     marketBriefModerate: 'Moderate conviction',
     marketBriefLow: 'Low conviction',
     marketBriefDisclaimer: 'AI opinion only — not financial advice.',
+    marketBriefPredReview: "Yesterday's Call",
+    marketBriefNewsDrivers: 'What Moved Markets',
+    marketBriefPattern: 'Pattern',
+    marketBriefNow: 'Today',
+    marketBriefDaysAgo: (d) => `${d}d ago`,
     presenceHeader: 'Where people connected from',
     // Chat
     chat: 'Chat',
@@ -375,7 +380,7 @@ const translations = {
     hoursAgo: (h) => `${h}س`,
     // Stats
     topStocks: 'أفضل 10 أسهم',
-    marketBriefTitle: 'ملخص السوق اليومي · ذكاء اصطناعي',
+    marketBriefTitle: 'محلل الأسواق 📊',
     marketBriefLoading: 'جارٍ إعداد الملخص…',
     marketBriefError: 'الملخص غير متاح',
     marketBriefWatch: '👁 راقب',
@@ -386,6 +391,11 @@ const translations = {
     marketBriefModerate: 'ثقة متوسطة',
     marketBriefLow: 'ثقة منخفضة',
     marketBriefDisclaimer: 'رأي الذكاء الاصطناعي فقط — ليس نصيحة مالية.',
+    marketBriefPredReview: 'تقييم توقعات الأمس',
+    marketBriefNewsDrivers: 'ما حرّك الأسواق',
+    marketBriefPattern: 'نمط ملاحظ',
+    marketBriefNow: 'اليوم',
+    marketBriefDaysAgo: (d) => `منذ ${d} يوم`,
     presenceHeader: 'من أي دول يتابع المستخدمون الأخبار',
     // Chat
     chat: 'ساحة الحوار',

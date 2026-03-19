@@ -2717,6 +2717,97 @@ body.intel-open { overflow: hidden; }
     color: var(--accent-light);
     font-weight: 600;
 }
+
+/* Prediction review (yesterday's call evaluation) */
+.mb-pred-review {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: rgba(78, 160, 125, 0.08);
+    border: 1px solid rgba(78, 160, 125, 0.18);
+}
+.mb-pred-review-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #4caf7d;
+    margin-bottom: 4px;
+}
+.mb-pred-review-text {
+    font-size: 11.5px;
+    color: var(--text-primary);
+    line-height: 1.55;
+    margin: 0;
+    font-style: italic;
+}
+
+/* News drivers (what moved markets) */
+.mb-news-drivers {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.mb-drivers-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-light);
+}
+.mb-driver-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    background: rgba(78, 122, 160, 0.05);
+    border-left: 2px solid var(--accent-light);
+}
+[dir="rtl"] .mb-driver-row {
+    border-left: none;
+    border-right: 2px solid var(--accent-light);
+}
+.mb-driver-event {
+    font-size: 11.5px;
+    color: var(--text-primary);
+    font-weight: 600;
+    line-height: 1.4;
+}
+.mb-driver-impact {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.mb-driver-assets {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Pattern (multi-day trend) */
+.mb-pattern {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    padding: 5px 10px;
+    border-radius: var(--radius-sm);
+    background: rgba(232, 197, 74, 0.07);
+    border: 1px solid rgba(232, 197, 74, 0.18);
+    line-height: 1.5;
+}
+.mb-pattern-label {
+    font-weight: 700;
+    color: #e8c54a;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* History navigation (reuses tl-dot pattern from intelligence) */
+.mb-history-nav {
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
 .price-chart-header {
     display: flex;
     align-items: center;

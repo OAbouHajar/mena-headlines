@@ -61,6 +61,8 @@ export function initStatsPanel() {
     const panel = document.getElementById('statsPanel');
     if (panel && !panel.classList.contains('closed')) loadStats();
     _briefLoaded = false;
+    _mbHistoryCaches = {};
+    _mbHistoryIndex = 0;
   });
 }
 
@@ -225,38 +227,27 @@ function _renderFlightPanel(data) {
 
   const isAr          = lang() === 'ar';
   const totalToday     = Math.max(data.count, data.totalToday || 0);
-  const yesterdayTotal = data.yesterdayTotal || 0;
-  const hasYesterday   = yesterdayTotal > 0;
 
-  function buildCountryTable(view) {
-    const isYesterday = view === 'yesterday';
-    const maxVal = Math.max(...data.countries.map(c => isYesterday ? (c.yesterdayTotal || 0) : c.n), 1);
+  function buildCountryTable() {
+    const maxVal = Math.max(...data.countries.map(c => Math.max(c.n, c.todayTotal || 0)), 1);
 
-    const headerLabel2 = isYesterday ? t('flightYesterday') : t('flightToday');
     const header = `
       <div class="flt-table-head">
         <span></span>
         <span></span>
         <span></span>
-        <span class="flt-th flt-th-now">${t('flightNow')}</span>
-        <span class="flt-th flt-th-total">${headerLabel2}</span>
+        <span class="flt-th flt-th-total">${t('flightToday')}</span>
       </div>`;
 
     const rows = [...data.countries].sort((a, b) => {
-      const aN = isYesterday ? (a.yesterdayTotal || 0) : Math.max(a.n, a.todayTotal || 0);
-      const bN = isYesterday ? (b.yesterdayTotal || 0) : Math.max(b.n, b.todayTotal || 0);
+      const aN = Math.max(a.n, a.todayTotal || 0);
+      const bN = Math.max(b.n, b.todayTotal || 0);
       return bN - aN;
     }).map(c => {
-      const nowN     = c.n;
       const todayN   = Math.max(c.n, c.todayTotal || 0);
-      const yestN    = c.yesterdayTotal || 0;
-      const primaryN = isYesterday ? yestN : nowN;
-      const barW     = primaryN > 0 ? Math.max(4, Math.round(primaryN / maxVal * 100)) : 0;
-      const isZero   = isYesterday ? yestN === 0 : (nowN === 0 && todayN === 0);
-      const nowCell   = nowN > 0   ? nowN   : '—';
-      const totalCell = isYesterday
-        ? (yestN > 0 ? yestN : '—')
-        : (todayN > 0 ? todayN : '—');
+      const barW     = todayN > 0 ? Math.max(4, Math.round(todayN / maxVal * 100)) : 0;
+      const isZero   = todayN === 0;
+      const totalCell = todayN > 0 ? todayN : '—';
       return `
         <div class="flt-table-row${isZero ? ' flt-zero' : ''}">
           <span class="flight-country-flag">${c.flag}</span>
@@ -264,7 +255,6 @@ function _renderFlightPanel(data) {
           <span class="flight-country-bar-wrap">
             <span class="flight-country-bar" style="width:${barW}%"></span>
           </span>
-          <span class="flt-col-now">${nowCell}</span>
           <span class="flt-col-total">${totalCell}</span>
         </div>`;
     }).join('');
@@ -272,47 +262,26 @@ function _renderFlightPanel(data) {
     return header + rows;
   }
 
-  const tabsHTML = hasYesterday ? `
-    <div class="flight-tabs">
-      <button class="flight-tab active" data-view="today">${t('flightToday')}</button>
-      <button class="flight-tab" data-view="yesterday">${t('flightYesterday')}</button>
-    </div>` : '';
-
   body.innerHTML = `
     <div class="stats-section">
       <p class="flight-hero-desc">${t('flightHeroDesc')}</p>
       <div class="stats-cards-row">
-        <div class="stat-card flight-now-card">
-          <div class="stat-hero-value">${data.count.toLocaleString()}</div>
-          <div class="stat-card-label">✈️ ${t('flightNow')}</div>
-        </div>
         <div class="stat-card flight-today-card">
           <div class="stat-hero-value">${totalToday.toLocaleString()}</div>
-          <div class="stat-card-label">📊 ${t('flightToday')}</div>
+          <div class="stat-card-label">✈️ ${t('flightToday')}</div>
         </div>
       </div>
     </div>
     <div class="stats-section">
       <div class="flight-section-header">
         <span class="stats-section-title" style="margin:0">${t('flightByCountry')}</span>
-        ${tabsHTML}
       </div>
       <div class="flight-countries" id="flightCountriesBody">
-        ${buildCountryTable('today')}
+        ${buildCountryTable()}
       </div>
     </div>
     <div class="flight-update-time">${t('flightLastUpdate')}: ${new Date().toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</div>
   `;
-
-  body.querySelectorAll('.flight-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      body.querySelectorAll('.flight-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const countriesEl = document.getElementById('flightCountriesBody');
-      countriesEl.classList.toggle('flt-hide-now', btn.dataset.view === 'yesterday');
-      countriesEl.innerHTML = buildCountryTable(btn.dataset.view);
-    });
-  });
 }
 
 export function toggleFlightPanel() {
@@ -384,13 +353,16 @@ function renderError(container) {
 }
 
 // ---------------------------------------------------------------------------
-// AI Daily Market Brief
+// AI Market Analyst — with versioned history + news-driven analysis
 // ---------------------------------------------------------------------------
 
 let _briefLoaded = false;
+let _mbHistoryIndex = 0;
+let _mbHistoryTotal = 1;
+let _mbHistoryCaches = {};   // keyed "lang:index" → data
+let _mbPrices = null;        // fallback prices for client-side brief
 
 function _briefCacheKey() {
-  // One entry per language per day boundary (21:30 UTC)
   const now = Date.now();
   const boundary = (() => {
     const d = new Date();
@@ -400,35 +372,75 @@ function _briefCacheKey() {
   return `market-brief:${lang()}:${boundary}`;
 }
 
-async function loadMarketBrief(prices) {
+async function loadMarketBrief(prices, historyIndex = 0) {
   const el = document.getElementById('priceCommentaryEl');
   if (!el) return;
+  _mbPrices = prices || _mbPrices;
 
-  // Show skeleton while loading
+  // Show skeleton
   el.innerHTML = `<div class="mb-loading"><span class="stats-skeleton" style="width:60%;height:11px;display:block;margin-bottom:6px"></span><span class="stats-skeleton" style="width:85%;height:11px;display:block"></span></div>`;
 
-  // Check localStorage daily cache
-  const cacheKey = _briefCacheKey();
-  try {
-    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-    if (cached) { renderMarketBrief(cached); return; }
-  } catch { /* ignore corrupt cache */ }
+  // Check client-side cache (for historical: forever; for latest: daily boundary)
+  const cacheKey = `${lang()}:${historyIndex}`;
+  const cached = _mbHistoryCaches[cacheKey];
+  if (cached) {
+    _mbHistoryIndex = historyIndex;
+    renderMarketBrief(cached);
+    return;
+  }
+
+  // Also check localStorage for latest
+  if (historyIndex === 0) {
+    const lsKey = _briefCacheKey();
+    try {
+      const lsCached = JSON.parse(localStorage.getItem(lsKey) || 'null');
+      if (lsCached) {
+        _mbHistoryCaches[cacheKey] = lsCached;
+        if (typeof lsCached._historyTotal === 'number') _mbHistoryTotal = lsCached._historyTotal;
+        _mbHistoryIndex = 0;
+        renderMarketBrief(lsCached);
+        return;
+      }
+    } catch { /* corrupt */ }
+  }
 
   try {
-    const resp = await fetch(`/api/market-brief?lang=${lang()}`);
+    let resp;
+    if (historyIndex > 0) {
+      resp = await fetch('/api/market-brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lang: lang(), historyIndex }),
+      });
+    } else {
+      resp = await fetch(`/api/market-brief?lang=${lang()}`);
+    }
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
-    try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch { /* storage full */ }
+
+    // Update history state
+    if (typeof data._historyTotal === 'number') _mbHistoryTotal = data._historyTotal;
+    _mbHistoryIndex = historyIndex;
+
+    // Cache
+    _mbHistoryCaches[cacheKey] = data;
+    if (historyIndex === 0) {
+      try { localStorage.setItem(_briefCacheKey(), JSON.stringify(data)); } catch { /* full */ }
+    }
+
     renderMarketBrief(data);
   } catch (err) {
     console.warn('[market-brief] API unavailable, using client fallback:', err.message);
-    // Fetch 30-day history for richer fallback prose
-    try {
-      const hResp = await fetch('/api/commodity-history');
-      const history = hResp.ok ? await hResp.json() : null;
-      renderMarketBriefFallback(prices, history);
-    } catch {
-      renderMarketBriefFallback(prices, null);
+    if (historyIndex === 0) {
+      try {
+        const hResp = await fetch('/api/commodity-history');
+        const history = hResp.ok ? await hResp.json() : null;
+        renderMarketBriefFallback(_mbPrices, history);
+      } catch {
+        renderMarketBriefFallback(_mbPrices, null);
+      }
+    } else {
+      el.innerHTML = `<div class="mb-error">${t('marketBriefError')}</div>`;
     }
   }
 }
@@ -441,7 +453,6 @@ function renderMarketBriefFallback(prices, history) {
   const isAr = lang() === 'ar';
   const { oil, brent, gold, natgas } = prices;
 
-  // Collect page headlines for geopolitical context
   const pageHls = [];
   document.querySelectorAll('.ticker-item .ticker-text, .update-headline').forEach(n => {
     const tx = n.textContent.trim();
@@ -449,7 +460,6 @@ function renderMarketBriefFallback(prices, history) {
   });
   const hlStr = pageHls.join(' ');
 
-  // Geopolitical signal detection
   const geo = {
     midEast:  /iran|israel|gaza|lebanon|houthi|yemen|syria|iraq|saudi|hormuz/i.test(hlStr),
     conflict: /war|attack|strike|bomb|missile|military|conflict|ceasefire|offensive/i.test(hlStr),
@@ -459,7 +469,6 @@ function renderMarketBriefFallback(prices, history) {
   const oilHl  = pageHls.find(h => /iran|opec|saudi|oil|pipeline|hormuz|houthi|energy/i.test(h));
   const goldHl = pageHls.find(h => /war|fed|rate|inflation|dollar|attack|conflict|sanction|gold/i.test(h));
 
-  // 30-day trend analysis
   function trend(series) {
     if (!series || series.length < 4) return null;
     const v = series.map(p => p.close).filter(Boolean);
@@ -481,7 +490,6 @@ function renderMarketBriefFallback(prices, history) {
   const gT = trend(history?.gold);
   const nT = trend(history?.natgas);
 
-  // Derive outlook per commodity
   function outlook(price, t) {
     const dir = price && t ? (t.dir === 'up' && price.changePct > 0 ? 'up' : t.dir === 'down' && price.changePct < 0 ? 'down' : 'sideways') : (price?.changePct > 0 ? 'up' : price?.changePct < 0 ? 'down' : 'sideways');
     const conviction = (t?.nearHigh || t?.nearLow || Math.abs(price?.changePct || 0) > 2) ? 'moderate' : 'low';
@@ -674,6 +682,34 @@ function buildBriefAr({ oil, brent, gold, natgas, oT, gT, nT, geo, oilHl, goldHl
   </div>`;
 }
 
+function _mbHistoryLabel(index) {
+  if (index === 0) return t('marketBriefNow');
+  return t('marketBriefDaysAgo', index);
+}
+
+function _renderMbHistoryNav(el) {
+  if (_mbHistoryTotal <= 1) return '';
+  const dots = Array.from({ length: _mbHistoryTotal }, (_, i) => {
+    const active = i === _mbHistoryIndex;
+    const label  = _mbHistoryLabel(i);
+    return `<button class="tl-dot${active ? ' tl-dot--active' : ''}" data-mb-hist="${i}" title="${label}">
+      <span class="tl-pip"></span>
+      <span class="tl-label">${label}</span>
+    </button>`;
+  });
+  return `<div class="mb-history-nav"><div class="tl-track">${dots.join('')}</div></div>`;
+}
+
+function _bindMbHistoryNav(el) {
+  el.querySelectorAll('[data-mb-hist]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.mbHist, 10);
+      if (isNaN(idx) || idx === _mbHistoryIndex) return;
+      loadMarketBrief(null, idx);
+    });
+  });
+}
+
 function renderMarketBrief(data) {
   const el = document.getElementById('priceCommentaryEl');
   if (!el || !data) return;
@@ -690,17 +726,54 @@ function renderMarketBrief(data) {
       <span class="mb-reason">${o.reason || ''}</span>
     </div>`).join('') : '';
 
+  // Prediction review (self-evaluation of yesterday's call)
+  const predReview = data.prediction_review
+    ? `<div class="mb-pred-review">
+        <div class="mb-pred-review-label">${t('marketBriefPredReview')}</div>
+        <p class="mb-pred-review-text">${data.prediction_review}</p>
+      </div>`
+    : '';
+
+  // News drivers (what moved markets)
+  const drivers = Array.isArray(data.news_drivers) && data.news_drivers.length > 0
+    ? `<div class="mb-news-drivers">
+        <div class="mb-drivers-label">${t('marketBriefNewsDrivers')}</div>
+        ${data.news_drivers.map(d => `
+          <div class="mb-driver-row">
+            <span class="mb-driver-event">📰 ${d.event}</span>
+            <span class="mb-driver-impact">${d.impact}</span>
+            ${Array.isArray(d.assets_affected) ? `<span class="mb-driver-assets">${d.assets_affected.join(', ')}</span>` : ''}
+          </div>`).join('')}
+      </div>`
+    : '';
+
+  // Pattern (multi-day trend)
+  const pattern = data.pattern
+    ? `<div class="mb-pattern">
+        <span class="mb-pattern-label">${t('marketBriefPattern')}:</span> ${data.pattern}
+      </div>`
+    : '';
+
+  // History navigation
+  const histNav = _renderMbHistoryNav(el);
+
   el.innerHTML = `
     <div class="market-brief">
       <div class="mb-header">
         <span class="mb-title">${t('marketBriefTitle')}</span>
         <span class="mb-disclaimer">${t('marketBriefDisclaimer')}</span>
       </div>
+      ${predReview}
       ${data.headline ? `<p class="mb-headline">${data.headline}</p>` : ''}
+      ${drivers}
       ${data.commentary ? `<p class="mb-commentary">${data.commentary}</p>` : ''}
       ${outlook ? `<div class="mb-outlook">${outlook}</div>` : ''}
+      ${pattern}
       ${data.watch ? `<p class="mb-watch"><strong>${t('marketBriefWatch')}:</strong> ${data.watch}</p>` : ''}
+      ${histNav}
     </div>`;
+
+  _bindMbHistoryNav(el);
 }
 
 
