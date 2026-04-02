@@ -15,12 +15,14 @@
 
 'use strict';
 
-const { OpenAI }            = require('openai');
+const { AzureOpenAI }       = require('openai');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
 const API_KEY    = process.env.AZURE_OPENAI_API_KEY;
+const API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-04-01-preview';
 const ENDPOINT   = process.env.AZURE_OPENAI_ENDPOINT;
-const MODEL_NAME = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+const MODEL_NAME = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5-mini';
+const DEPLOYMENT = MODEL_NAME;
 
 const BLOB_CONTAINER = 'market-brief-cache';
 const MAX_HISTORY    = 7;
@@ -321,7 +323,7 @@ Use this to evaluate whether your past calls were correct or wrong. Be honest.`;
 
     const userMessage = `lang: ${requestLang}\n\n${marketContext}${headlinesContext}${previousContext}`;
 
-    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
+    const client = new AzureOpenAI({ endpoint: ENDPOINT, apiKey: API_KEY, apiVersion: API_VERSION, deployment: DEPLOYMENT });
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
       messages: [

@@ -8,12 +8,13 @@
  *   Blobs: current-ar.json, current-en.json
  */
 
-const { OpenAI }            = require('openai');
+const { AzureOpenAI }       = require('openai');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
-const API_KEY  = process.env.AZURE_OPENAI_API_KEY;
-const ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
-const MODEL    = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+const API_KEY   = process.env.AZURE_OPENAI_API_KEY;
+const API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-04-01-preview';
+const ENDPOINT  = process.env.AZURE_OPENAI_ENDPOINT;
+const MODEL     = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5-mini';
 
 const CONTAINER = 'predictions-data';
 
@@ -54,16 +55,7 @@ function tomorrowMidnightUTC() {
 
 // ─── AI question generator ─────────────────────────────────────────────────────
 async function generateQuestion(language) {
-  const openai = new OpenAI(
-    ENDPOINT
-      ? {
-          apiKey: API_KEY,
-          baseURL: `${ENDPOINT}/openai/deployments/${MODEL}`,
-          defaultQuery: { 'api-version': '2024-12-01-preview' },
-          defaultHeaders: { 'api-key': API_KEY },
-        }
-      : { apiKey: API_KEY }
-  );
+  const openai = new AzureOpenAI({ endpoint: ENDPOINT, apiKey: API_KEY, apiVersion: API_VERSION, deployment: MODEL });
 
   const prompt =
     language === 'ar'

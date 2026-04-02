@@ -7,13 +7,13 @@
  * - Accepts { lang, historyIndex } — 0=today, 1=yesterday, etc.
  */
 
-const { OpenAI }            = require('openai');
+const { AzureOpenAI }       = require('openai');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
 const API_KEY     = process.env.AZURE_OPENAI_API_KEY;
-const API_VERSION = '2024-12-01-preview';
+const API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-04-01-preview';
 const ENDPOINT    = process.env.AZURE_OPENAI_ENDPOINT;
-const MODEL_NAME  = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+const MODEL_NAME = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5-mini';
 const DEPLOYMENT  = MODEL_NAME;
 
 const BLOB_CONTAINER = 'intel-cache';
@@ -326,7 +326,7 @@ module.exports = async function (context, req) {
     // Attach raw market/flight snapshot to result for client rendering
     const snapshot = { market, flights };
 
-    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
+    const client = new AzureOpenAI({ endpoint: ENDPOINT, apiKey: API_KEY, apiVersion: API_VERSION, deployment: DEPLOYMENT });
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
       messages: [

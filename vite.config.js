@@ -195,9 +195,9 @@ function checkLivePlugin() {
  */
 function intelligencePlugin(env) {
   const API_KEY     = env.AZURE_OPENAI_API_KEY;
-  const API_VERSION = '2024-12-01-preview';
+  const API_VERSION = (env.AZURE_OPENAI_API_VERSION || '2024-04-01-preview').trim();
   const ENDPOINT    = env.AZURE_OPENAI_ENDPOINT;
-  const MODEL_NAME  = (env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini').trim();
+  const MODEL_NAME  = (env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5-mini').trim();
   const DEPLOYMENT  = MODEL_NAME;
 
   // RSS feeds — English (politics & world affairs only)
@@ -388,8 +388,8 @@ confidence_level must be one of: Low, Moderate, High`;
 
           let aiText;
           if (API_KEY && ENDPOINT) {
-            const { default: OpenAI } = await import('openai');
-            const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
+            const { AzureOpenAI } = await import('openai');
+            const client = new AzureOpenAI({ endpoint: ENDPOINT, apiKey: API_KEY, apiVersion: API_VERSION, deployment: DEPLOYMENT });
             const resp = await client.chat.completions.create({
               model: MODEL_NAME,
               messages: [
@@ -478,8 +478,8 @@ confidence_level must be one of: Low, Moderate, High`;
       return `${i + 1}. ${title}`;
     }).join('\n');
 
-    const { default: OpenAI } = await import('openai');
-    const client = new OpenAI({ baseURL: ENDPOINT, apiKey: API_KEY });
+    const { AzureOpenAI } = await import('openai');
+    const client = new AzureOpenAI({ endpoint: ENDPOINT, apiKey: API_KEY, apiVersion: API_VERSION, deployment: DEPLOYMENT });
 
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
