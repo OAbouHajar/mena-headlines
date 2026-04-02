@@ -288,7 +288,7 @@ module.exports = async function (context, req) {
         { role: 'system', content: persona.prompt },
         { role: 'user',   content: userPrompt },
       ],
-      max_tokens: 4096,
+      max_completion_tokens: 4096,
       reasoning_effort: 'low',
     });
 

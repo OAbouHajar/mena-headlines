@@ -69,7 +69,7 @@ Respond with JSON only (no markdown):
   const completion = await openai.chat.completions.create({
     model: MODEL,
     messages: [{ role: 'user', content: prompt }],
-    max_tokens: 300,
+    max_completion_tokens: 300,
     temperature: 0.85,
   });
 

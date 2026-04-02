@@ -396,7 +396,7 @@ confidence_level must be one of: Low, Moderate, High`;
                 { role: 'system', content: persona.prompt },
                 { role: 'user',   content: userPrompt },
               ],
-              max_tokens: 4096,
+              max_completion_tokens: 4096,
             });
             const choice = resp.choices?.[0];
             console.log(`[intelligence] AI chat (${persona.persona}) finish_reason=${choice?.finish_reason}, content_len=${(choice?.message?.content || '').length}`);
@@ -487,7 +487,7 @@ confidence_level must be one of: Low, Moderate, High`;
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: `Here are the live news headlines to analyze:\n\n${headlineText}\n\nReturn only the JSON object.` },
       ],
-      max_tokens: 4096,
+      max_completion_tokens: 4096,
     });
 
     const choice = response.choices?.[0];

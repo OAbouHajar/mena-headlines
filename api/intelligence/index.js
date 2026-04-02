@@ -336,7 +336,7 @@ module.exports = async function (context, req) {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: userMessage },
       ],
-      max_tokens: 4096,
+      max_completion_tokens: 4096,
     });
 
     const choice  = response.choices?.[0];

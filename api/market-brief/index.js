@@ -330,7 +330,7 @@ Use this to evaluate whether your past calls were correct or wrong. Be honest.`;
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: userMessage },
       ],
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
       temperature: 0.6,
     });
 
