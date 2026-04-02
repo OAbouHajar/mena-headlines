@@ -273,6 +273,9 @@ module.exports = async function (context, req) {
     const historyIndex = typeof body.historyIndex === 'number' ? body.historyIndex : 0;
 
     const container = getContainerClient();
+    if (container) {
+      try { await container.createIfNotExists(); } catch (_) {}
+    }
 
     // ── Serve a historical report (not latest) ──────────────────────────────
     if (historyIndex > 0 && container) {
